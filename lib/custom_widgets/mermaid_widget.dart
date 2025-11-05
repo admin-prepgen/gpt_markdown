@@ -19,6 +19,7 @@ class MermaidWidget extends StatefulWidget {
     this.width,
     this.backgroundColor,
     this.theme = MermaidTheme.default_,
+    this.fitToHeight = false,
   });
 
   final String mermaidCode;
@@ -26,6 +27,7 @@ class MermaidWidget extends StatefulWidget {
   final double? width;
   final Color? backgroundColor;
   final MermaidTheme theme;
+  final bool fitToHeight;
 
   @override
   State<MermaidWidget> createState() => _MermaidWidgetState();
@@ -45,6 +47,112 @@ class _MermaidWidgetState extends State<MermaidWidget> {
     } else {
       _initializeWebView();
     }
+  }
+
+  @override
+  void didUpdateWidget(MermaidWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    
+    // If fitToHeight or other rendering params changed, rebuild
+    if (oldWidget.fitToHeight != widget.fitToHeight ||
+        oldWidget.theme != widget.theme ||
+        oldWidget.mermaidCode != widget.mermaidCode ||
+        oldWidget.height != widget.height ||
+        oldWidget.width != widget.width ||
+        oldWidget.backgroundColor != widget.backgroundColor) {
+      
+      if (kIsWeb && _viewId != null) {
+        // For web, update the existing container element
+        _updateWebElement();
+      } else {
+        // For mobile, reload the WebView
+        setState(() {
+          _isLoading = true;
+          _error = null;
+        });
+        _initializeWebView();
+      }
+    }
+  }
+
+  void _updateWebElement() {
+    if (!kIsWeb || _viewId == null) return;
+    
+    // Find the existing container and update its CSS
+    final container = web.document.querySelector('#$_viewId') as web.HTMLDivElement?;
+    if (container != null) {
+      // Update overflow style based on fitToHeight
+      container.style.overflow = widget.fitToHeight ? 'hidden' : 'auto';
+      
+      // Re-render the diagram
+      _ensureMermaidLoaded().then((_) {
+        final html = _generateWebHtml();
+        container.innerHTML = html.toJS;
+        
+        // Re-initialize mermaid with new config
+        _initializeMermaidDiagram();
+      });
+    }
+  }
+
+  void _initializeMermaidDiagram() {
+    final scriptCode = '''
+      setTimeout(function() {
+        if (typeof mermaid !== 'undefined') {
+          // Clear previous diagrams
+          mermaid.contentLoaded();
+          
+          mermaid.initialize({ 
+            startOnLoad: false,
+            theme: '${widget.theme}',
+            securityLevel: 'loose',
+            suppressErrorRendering: false,
+            flowchart: {
+              useMaxWidth: true,
+              htmlLabels: true,
+              ${widget.fitToHeight ? 'useMaxHeight: true,' : ''}
+              curve: 'basis'
+            },
+            sequence: {
+              useMaxWidth: true,
+              ${widget.fitToHeight ? 'useMaxHeight: true,' : ''}
+            },
+            gantt: {
+              useMaxWidth: true,
+              ${widget.fitToHeight ? 'useMaxHeight: true,' : ''}
+            },
+            pie: {
+              useMaxWidth: true
+            },
+            xychart: {
+              useMaxWidth: true,
+              ${widget.fitToHeight ? 'useMaxHeight: true' : ''}
+            }
+          });
+          try {
+            mermaid.run().then(function() {
+              // Optimize SVG sizing after render
+              var svg = document.querySelector('[id*="mermaid-diagram"] svg');
+              if (svg) {
+                if (${widget.fitToHeight.toString()}) {
+                  svg.style.maxWidth = '100%';
+                  svg.style.maxHeight = '100%';
+                  svg.style.width = 'auto';
+                  svg.style.height = 'auto';
+                  svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+                }
+              }
+            }).catch(function(error) {
+              console.error('Mermaid render error:', error);
+            });
+          } catch (e) {
+            console.error('Mermaid error:', e);
+          }
+        }
+      }, 100);
+    ''';
+    
+    web.window.callMethod('eval'.toJS, scriptCode.toJS);
   }
 
   void _registerWebView() {
@@ -70,10 +178,11 @@ class _MermaidWidgetState extends State<MermaidWidget> {
 
   web.HTMLDivElement _createHtmlElement() {
     final container = web.document.createElement('div') as web.HTMLDivElement;
+    container.id = _viewId!;
     container.style.width = widget.width != null ? '${widget.width}px' : '100%';
     container.style.height = widget.height != null ? '${widget.height}px' : 'auto';
     container.style.minHeight = widget.height != null ? '${widget.height}px' : '200px';
-    container.style.overflow = 'auto';
+    container.style.overflow = widget.fitToHeight ? 'hidden' : 'auto';
     container.style.position = 'relative';
     container.style.border = '1px solid #ccc';
     
@@ -96,40 +205,7 @@ class _MermaidWidgetState extends State<MermaidWidget> {
       }
       
       // Run initialization script
-      final scriptCode = '''
-        setTimeout(function() {
-          if (typeof mermaid !== 'undefined') {
-            mermaid.initialize({ 
-              startOnLoad: false,
-              theme: '${widget.theme}',
-              securityLevel: 'loose',
-              suppressErrorRendering: false
-            });
-            try {
-              mermaid.run().then(function() {
-                // Diagram rendered successfully
-              }).catch(function(error) {
-                var container = document.querySelector('div[style*="position: relative"]');
-                if (container) {
-                  container.innerHTML = '<div style="color: red; padding: 10px; border: 1px solid red; background: #ffe0e0;">Mermaid Error: ' + error.message + '</div>';
-                }
-              });
-            } catch (e) {
-              var container = document.querySelector('div[style*="position: relative"]');
-              if (container) {
-                container.innerHTML = '<div style="color: red; padding: 10px; border: 1px solid red; background: #ffe0e0;">Mermaid Error: ' + e.message + '</div>';
-              }
-            }
-          } else {
-            var container = document.querySelector('div[style*="position: relative"]');
-            if (container) {
-              container.innerHTML = '<div style="color: red; padding: 10px; border: 1px solid red; background: #ffe0e0;">Mermaid library not loaded</div>';
-            }
-          }
-        }, 100);
-      ''';
-      
-      web.window.callMethod('eval'.toJS, scriptCode.toJS);
+      _initializeMermaidDiagram();
     }).catchError((error) {
       if (kDebugMode) {
         print('Error loading Mermaid: $error');
@@ -180,8 +256,19 @@ class _MermaidWidgetState extends State<MermaidWidget> {
       print('Raw mermaid code: ${widget.mermaidCode}');
     }
     
+    // Build inline styles for the mermaid div
+    final mermaidStyles = widget.fitToHeight
+        ? 'width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; overflow: hidden; padding: 16px 0;'
+        : 'width: auto; max-width: 100%; height: auto; display: flex; align-items: center; justify-content: center; padding: 16px 0;';
+    
     return '''
-      <div id="mermaid-diagram-$_viewId" class="mermaid" style="background-color: ${widget.backgroundColor ?? 'transparent'};">
+      <style>
+        .mermaid svg {
+          max-width: 100%;
+          ${widget.fitToHeight ? 'max-height: 100%; width: auto; height: auto; object-fit: contain;' : 'height: auto;'}
+        }
+      </style>
+      <div id="mermaid-diagram-$_viewId" class="mermaid" style="background-color: ${widget.backgroundColor ?? 'transparent'}; $mermaidStyles">
 ${widget.mermaidCode}
       </div>
     ''';
@@ -223,25 +310,64 @@ ${widget.mermaidCode}
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
     <style>
+        * {
+          margin: 0;
+          padding: 0;
+          box-sizing: border-box;
+        }
+
         body {
-            margin: 0;
-            padding: 16px;
+            width: 100%;
+            height: 100%;
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             background-color: #$backgroundColor;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: calc(100vh - 32px);
         }
         
         .mermaid-container {
             width: 100%;
-            text-align: center;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+            box-sizing: border-box;
+            overflow: auto;
         }
         
+        /* Default behavior: natural sizing */
         .mermaid {
+            width: auto;
             max-width: 100%;
             height: auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 16px 0;
+        }
+        
+        /* Fit to height mode: constrained sizing */
+        .mermaid.fit-to-height {
+            width: 100%;
+            height: calc(100% - 32px);
+            max-width: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            padding: 16px 0;
+        }
+        
+        .mermaid svg {
+            max-width: 100%;
+            height: auto;
+        }
+        
+        .mermaid.fit-to-height svg {
+            max-width: 100%;
+            max-height: 100%;
+            width: auto;
+            height: auto;
+            object-fit: contain;
         }
         
         .error {
@@ -255,7 +381,7 @@ ${widget.mermaidCode}
 </head>
 <body>
     <div class="mermaid-container">
-        <div class="mermaid" id="mermaid-diagram">
+        <div class="mermaid${widget.fitToHeight ? ' fit-to-height' : ''}" id="mermaid-diagram">
             ${widget.mermaidCode}
         </div>
     </div>
@@ -270,13 +396,24 @@ ${widget.mermaidCode}
                 fontFamily: 'inherit',
                 flowchart: {
                     useMaxWidth: true,
-                    htmlLabels: true
+                    htmlLabels: true,
+                    ${widget.fitToHeight ? 'useMaxHeight: true,' : ''}
+                    curve: 'basis'
                 },
                 sequence: {
-                    useMaxWidth: true
+                    useMaxWidth: true,
+                    ${widget.fitToHeight ? 'useMaxHeight: true,' : ''}
                 },
                 gantt: {
+                    useMaxWidth: true,
+                    ${widget.fitToHeight ? 'useMaxHeight: true,' : ''}
+                },
+                pie: {
                     useMaxWidth: true
+                },
+                xychart: {
+                    useMaxWidth: true,
+                    ${widget.fitToHeight ? 'useMaxHeight: true' : ''}
                 }
             });
         } catch (error) {
@@ -295,19 +432,6 @@ ${widget.mermaidCode}
             console.error('Mermaid parse error:', err);
             document.body.innerHTML = '<div class="error">Mermaid syntax error: ' + err + '</div>';
         };
-        
-        // Auto-resize content
-        function resizeContent() {
-            const diagram = document.querySelector('.mermaid svg');
-            if (diagram) {
-                const rect = diagram.getBoundingClientRect();
-                // Send height to Flutter if possible
-                console.log('Diagram height:', rect.height);
-            }
-        }
-        
-        // Wait for diagram to render then resize
-        setTimeout(resizeContent, 1000);
     </script>
 </body>
 </html>

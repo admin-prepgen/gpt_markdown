@@ -451,6 +451,7 @@ This document was created to test the robustness of Markdown parsers and to ensu
   bool writingMod = true;
   bool selectable = false;
   bool useDollarSignsForLatex = false;
+  bool fitMermaidToHeight = false;
 
   @override
   Widget build(BuildContext context) {
@@ -477,22 +478,6 @@ This document was created to test the robustness of Markdown parsers and to ensu
               icon: Icon(
                 Icons.monetization_on_outlined,
                 color: useDollarSignsForLatex
-                    ? Theme.of(context).colorScheme.onSurfaceVariant
-                    : Theme.of(context)
-                        .colorScheme
-                        .onSurface
-                        .withValues(alpha: 0.38),
-              ),
-            ),
-            IconButton(
-              onPressed: () {
-                setState(() {
-                  selectable = !selectable;
-                });
-              },
-              icon: Icon(
-                Icons.select_all_outlined,
-                color: selectable
                     ? Theme.of(context).colorScheme.onSurfaceVariant
                     : Theme.of(context)
                         .colorScheme
@@ -539,9 +524,8 @@ This document was created to test the robustness of Markdown parsers and to ensu
                   Expanded(
                     child: ListView(
                       children: [
-                        ListenableBuilder(
-                          listenable: _controller,
-                          builder: (context, _) {
+                        Builder(
+                          builder: (context) {
                             var data = _controller.text;
                             return Container(
                               padding: const EdgeInsets.all(8),
@@ -816,32 +800,47 @@ This document was created to test the robustness of Markdown parsers and to ensu
                                       //   );
                                       // },
                                       mermaidBuilder: (context, code, style) {
-                                        // Return the advanced MermaidWidget for interactive rendering
-                                        // You can control dimensions in multiple ways:
-                                        
-                                        // Option 1: Fixed dimensions
-                                        // return MermaidWidget(
-                                        //   mermaidCode: code,
-                                        //   height: 300,
-                                        //   width: 600,
-                                        // );
-                                        
-                                        // Option 2: Auto-height with constraints (recommended for READMEs)
-                                        // return MermaidWidget(
-                                        //   mermaidCode: code,
-                                        //   height: null, // Auto-height (200-600px range)
-                                        //   width: null,  // Full width
-                                        // );
-                                        
-                                        // Option 3: Responsive sizing
-                                        return MermaidWidget(
-                                          mermaidCode: code,
-                                          height: 300,  // Fixed height works well for most cases
-                                          width: null,   // Full width adapts to container
-                                          backgroundColor: Theme.of(context).colorScheme.surface,
-                                          theme: Theme.of(context).brightness == Brightness.dark 
-                                              ? MermaidTheme.dark 
-                                              : MermaidTheme.default_,
+                                        return StatefulBuilder(
+                                          builder: (context, setState) {
+                                            return Column(
+                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              children: [
+                                                Row(
+                                                  children: [
+                                                    Checkbox(
+                                                      value: fitMermaidToHeight,
+                                                      onChanged: (value) {
+                                                        if (value != null) {
+                                                          setState(() {
+                                                            fitMermaidToHeight = value;
+                                                          });
+                                                          // Also update the main state
+                                                          this.setState(() {
+                                                            fitMermaidToHeight = value;
+                                                          });
+                                                        }
+                                                      },
+                                                    ),
+                                                    Text(
+                                                      'Fit to height',
+                                                      style: Theme.of(context).textTheme.bodySmall,
+                                                    ),
+                                                  ],
+                                                ),
+                                                const SizedBox(height: 8),
+                                                MermaidWidget(
+                                                  mermaidCode: code,
+                                                  height: 300,
+                                                  width: null,
+                                                  backgroundColor: Theme.of(context).colorScheme.surface,
+                                                  theme: Theme.of(context).brightness == Brightness.dark 
+                                                      ? MermaidTheme.dark 
+                                                      : MermaidTheme.default_,
+                                                  fitToHeight: fitMermaidToHeight,
+                                                ),
+                                              ],
+                                            );
+                                          },
                                         );
                                       },
                                     );
