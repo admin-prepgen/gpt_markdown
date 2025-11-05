@@ -368,6 +368,55 @@ pie title Programming Languages Usage
     "Others" : 5
 ```
 
+#### XY Chart (Beta)
+```mermaid
+xychart-beta
+    title "Sales Revenue"
+    x-axis [jan, feb, mar, apr, may, jun, jul, aug, sep, oct, nov, dec]
+    y-axis "Revenue (in $)" 4000 --> 11000
+    bar [5000, 6000, 7500, 8200, 9500, 10500, 11000, 10200, 9200, 8500, 7000, 6000]
+    line [5000, 6000, 7500, 8200, 9500, 10500, 11000, 10200, 9200, 8500, 7000, 6000]
+```
+
+#### XY Chart (Standard)
+```mermaid
+xychart
+    title "Sales Revenue"
+    x-axis [jan, feb, mar, apr, may, jun, jul, aug, sep, oct, nov, dec]
+    y-axis "Revenue (in $)" 4000 --> 11000
+    bar [5000, 6000, 7500, 8200, 9500, 10500, 11000, 10200, 9200, 8500, 7000, 6000]
+    line [5000, 6000, 7500, 8200, 9500, 10500, 11000, 10200, 9200, 8500, 7000, 6000]
+```
+
+#### XY Chart Variations (Currently Supported)
+```mermaid
+xychart
+    title "Multiple Data Series"
+    x-axis [Q1, Q2, Q3, Q4]
+    y-axis "Values" 0 --> 100
+    bar "Revenue" [85, 92, 78, 96]
+    bar "Costs" [45, 52, 48, 61]
+    line "Target" [80, 85, 75, 90]
+```
+
+#### XY Chart with Numeric X-Axis
+```mermaid
+xychart
+    title "Time Series Data"
+    x-axis "Time (hours)" 0 --> 24
+    y-axis "Temperature (°C)" 15 --> 35
+    line [20, 22, 25, 28, 32, 30, 26, 24, 21, 19, 18, 16, 15, 17, 20, 23, 27, 31, 33, 32, 29, 25, 22, 20]
+```
+
+#### XY Chart Horizontal Orientation
+```mermaid
+xychart horizontal
+    title "Horizontal Bar Chart"
+    x-axis [A, B, C, D, E]
+    y-axis "Values" 0 --> 100
+    bar [25, 45, 65, 85, 95]
+```
+
 This document was created to test the robustness of Markdown parsers and to ensure that all components, including advanced LaTeX expressions, Mermaid diagrams, and nested structures, are rendered correctly. Enjoy testing and feel free to extend it further!
 ```
 ''',

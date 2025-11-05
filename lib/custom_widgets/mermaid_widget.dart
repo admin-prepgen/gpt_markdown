@@ -97,26 +97,39 @@ class _MermaidWidgetState extends State<MermaidWidget> {
       
       // Run initialization script
       final scriptCode = '''
-        console.log('Starting Mermaid initialization...');
         setTimeout(function() {
-          console.log('Mermaid object available:', typeof mermaid !== 'undefined');
           if (typeof mermaid !== 'undefined') {
-            console.log('Initializing Mermaid with theme: ${widget.theme}');
             mermaid.initialize({ 
               startOnLoad: false,
               theme: '${widget.theme}',
-              securityLevel: 'loose'
+              securityLevel: 'loose',
+              suppressErrorRendering: false
             });
-            console.log('Running Mermaid...');
-            mermaid.run();
-            console.log('Mermaid diagram rendered successfully');
+            try {
+              mermaid.run().then(function() {
+                // Diagram rendered successfully
+              }).catch(function(error) {
+                var container = document.querySelector('div[style*="position: relative"]');
+                if (container) {
+                  container.innerHTML = '<div style="color: red; padding: 10px; border: 1px solid red; background: #ffe0e0;">Mermaid Error: ' + error.message + '</div>';
+                }
+              });
+            } catch (e) {
+              var container = document.querySelector('div[style*="position: relative"]');
+              if (container) {
+                container.innerHTML = '<div style="color: red; padding: 10px; border: 1px solid red; background: #ffe0e0;">Mermaid Error: ' + e.message + '</div>';
+              }
+            }
           } else {
-            console.error('Mermaid library not loaded!');
+            var container = document.querySelector('div[style*="position: relative"]');
+            if (container) {
+              container.innerHTML = '<div style="color: red; padding: 10px; border: 1px solid red; background: #ffe0e0;">Mermaid library not loaded</div>';
+            }
           }
         }, 100);
       ''';
       
-      (web.window as JSObject).callMethod('eval'.toJS, scriptCode.toJS);
+      web.window.callMethod('eval'.toJS, scriptCode.toJS);
     }).catchError((error) {
       if (kDebugMode) {
         print('Error loading Mermaid: $error');
@@ -132,7 +145,7 @@ class _MermaidWidgetState extends State<MermaidWidget> {
 
     // Check if Mermaid is already loaded using eval
     try {
-      final result = (web.window as JSObject).callMethod('eval'.toJS, 'typeof mermaid'.toJS);
+      final result = web.window.callMethod('eval'.toJS, 'typeof mermaid'.toJS);
       if (result.toString() != 'undefined') {
         return;
       }
@@ -142,19 +155,19 @@ class _MermaidWidgetState extends State<MermaidWidget> {
 
     // Load Mermaid.js from CDN
     final script = web.HTMLScriptElement()
-      ..src = 'https://cdn.jsdelivr.net/npm/mermaid@10.6.1/dist/mermaid.min.js'
+      ..src = 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js'
       ..type = 'text/javascript';
 
     // Wait for script to load
     final completer = Completer<void>();
     
-    script.addEventListener('load', ((web.Event event) {
+    script.addEventListener('load', (web.Event event) {
       completer.complete();
-    }).toJS);
+    }.toJS);
     
-    script.addEventListener('error', ((web.Event event) {
+    script.addEventListener('error', (web.Event event) {
       completer.completeError('Failed to load Mermaid.js');
-    }).toJS);
+    }.toJS);
 
     web.document.head?.appendChild(script);
     
@@ -208,7 +221,7 @@ ${widget.mermaidCode}
 <html>
 <head>
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <script src="https://cdn.jsdelivr.net/npm/mermaid@10.6.1/dist/mermaid.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
     <style>
         body {
             margin: 0;
@@ -248,30 +261,38 @@ ${widget.mermaidCode}
     </div>
     
     <script>
-        mermaid.initialize({
-            startOnLoad: true,
-            theme: '$themeConfig',
-            securityLevel: 'loose',
-            fontFamily: 'inherit',
-            flowchart: {
-                useMaxWidth: true,
-                htmlLabels: true
-            },
-            sequence: {
-                useMaxWidth: true
-            },
-            gantt: {
-                useMaxWidth: true
-            }
-        });
+        try {
+            mermaid.initialize({
+                startOnLoad: true,
+                theme: '$themeConfig',
+                securityLevel: 'loose',
+                suppressErrorRendering: false,
+                fontFamily: 'inherit',
+                flowchart: {
+                    useMaxWidth: true,
+                    htmlLabels: true
+                },
+                sequence: {
+                    useMaxWidth: true
+                },
+                gantt: {
+                    useMaxWidth: true
+                }
+            });
+        } catch (error) {
+            console.error('Mermaid initialization error:', error);
+            document.body.innerHTML = '<div class="error">Initialization Error: ' + error.message + '</div>';
+        }
         
         // Handle rendering errors
         window.addEventListener('error', function(e) {
+            console.error('Window error:', e);
             document.body.innerHTML = '<div class="error">Error rendering diagram: ' + e.message + '</div>';
         });
         
         // Mermaid error handling
         mermaid.parseError = function(err, hash) {
+            console.error('Mermaid parse error:', err);
             document.body.innerHTML = '<div class="error">Mermaid syntax error: ' + err + '</div>';
         };
         
