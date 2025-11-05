@@ -830,7 +830,7 @@ This document was created to test the robustness of Markdown parsers and to ensu
                                                 const SizedBox(height: 8),
                                                 MermaidWidget(
                                                   mermaidCode: code,
-                                                  height: 300,
+                                                  height: 400,
                                                   width: null,
                                                   backgroundColor: Theme.of(context).colorScheme.surface,
                                                   theme: Theme.of(context).brightness == Brightness.dark 
