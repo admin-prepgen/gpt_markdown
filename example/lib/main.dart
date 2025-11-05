@@ -768,9 +768,27 @@ This document was created to test the robustness of Markdown parsers and to ensu
                                       // },
                                       mermaidBuilder: (context, code, style) {
                                         // Return the advanced MermaidWidget for interactive rendering
+                                        // You can control dimensions in multiple ways:
+                                        
+                                        // Option 1: Fixed dimensions
+                                        // return MermaidWidget(
+                                        //   mermaidCode: code,
+                                        //   height: 300,
+                                        //   width: 600,
+                                        // );
+                                        
+                                        // Option 2: Auto-height with constraints (recommended for READMEs)
+                                        // return MermaidWidget(
+                                        //   mermaidCode: code,
+                                        //   height: null, // Auto-height (200-600px range)
+                                        //   width: null,  // Full width
+                                        // );
+                                        
+                                        // Option 3: Responsive sizing
                                         return MermaidWidget(
                                           mermaidCode: code,
-                                          height: 300,
+                                          height: 300,  // Fixed height works well for most cases
+                                          width: null,   // Full width adapts to container
                                           backgroundColor: Theme.of(context).colorScheme.surface,
                                           theme: Theme.of(context).brightness == Brightness.dark 
                                               ? MermaidTheme.dark 

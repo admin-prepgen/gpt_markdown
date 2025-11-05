@@ -1,20 +1,29 @@
 import 'dart:io';
+import 'dart:async';
+import 'dart:js_interop';
+import 'dart:js_interop_unsafe';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
+
+// Web-specific imports with conditional compilation
+import 'dart:ui_web' as ui_web;
+import 'package:web/web.dart' as web;
 
 /// A widget that renders Mermaid diagrams using WebView
 class MermaidWidget extends StatefulWidget {
   const MermaidWidget({
     super.key,
     required this.mermaidCode,
-    this.height = 300,
+    this.height,
+    this.width,
     this.backgroundColor,
     this.theme = MermaidTheme.default_,
   });
 
   final String mermaidCode;
-  final double height;
+  final double? height;
+  final double? width;
   final Color? backgroundColor;
   final MermaidTheme theme;
 
@@ -23,14 +32,146 @@ class MermaidWidget extends StatefulWidget {
 }
 
 class _MermaidWidgetState extends State<MermaidWidget> {
-  late final WebViewController controller;
+  WebViewController? controller;
   bool _isLoading = true;
   String? _error;
+  String? _viewId;
 
   @override
   void initState() {
     super.initState();
-    _initializeWebView();
+    if (kIsWeb) {
+      _registerWebView();
+    } else {
+      _initializeWebView();
+    }
+  }
+
+  void _registerWebView() {
+    if (!kIsWeb) return;
+    
+    _viewId = 'mermaid-${DateTime.now().millisecondsSinceEpoch}';
+    
+    if (kDebugMode) {
+      print('Registering Mermaid view with ID: $_viewId');
+    }
+    
+    // Register the view factory for web
+    ui_web.platformViewRegistry.registerViewFactory(
+      _viewId!,
+      (int viewId) {
+        if (kDebugMode) {
+          print('Creating HTML element for view ID: $viewId');
+        }
+        return _createHtmlElement();
+      },
+    );
+  }
+
+  web.HTMLDivElement _createHtmlElement() {
+    final container = web.document.createElement('div') as web.HTMLDivElement;
+    container.style.width = widget.width != null ? '${widget.width}px' : '100%';
+    container.style.height = widget.height != null ? '${widget.height}px' : 'auto';
+    container.style.minHeight = widget.height != null ? '${widget.height}px' : '200px';
+    container.style.overflow = 'auto';
+    container.style.position = 'relative';
+    container.style.border = '1px solid #ccc';
+    
+    if (kDebugMode) {
+      print('Created container element with height: ${widget.height ?? "auto"}px, width: ${widget.width ?? "100%"}');
+      print('Mermaid code length: ${widget.mermaidCode.length}');
+      print('Mermaid code preview: ${widget.mermaidCode.substring(0, widget.mermaidCode.length > 50 ? 50 : widget.mermaidCode.length)}...');
+    }
+    
+    // Load Mermaid.js and render the diagram
+    _ensureMermaidLoaded().then((_) {
+      if (kDebugMode) {
+        print('Mermaid loaded, generating HTML...');
+      }
+      final html = _generateWebHtml();
+      container.innerHTML = html.toJS;
+      
+      if (kDebugMode) {
+        print('HTML set, executing JavaScript...');
+      }
+      
+      // Run initialization script
+      final scriptCode = '''
+        console.log('Starting Mermaid initialization...');
+        setTimeout(function() {
+          console.log('Mermaid object available:', typeof mermaid !== 'undefined');
+          if (typeof mermaid !== 'undefined') {
+            console.log('Initializing Mermaid with theme: ${widget.theme}');
+            mermaid.initialize({ 
+              startOnLoad: false,
+              theme: '${widget.theme}',
+              securityLevel: 'loose'
+            });
+            console.log('Running Mermaid...');
+            mermaid.run();
+            console.log('Mermaid diagram rendered successfully');
+          } else {
+            console.error('Mermaid library not loaded!');
+          }
+        }, 100);
+      ''';
+      
+      (web.window as JSObject).callMethod('eval'.toJS, scriptCode.toJS);
+    }).catchError((error) {
+      if (kDebugMode) {
+        print('Error loading Mermaid: $error');
+      }
+      container.innerText = 'Error loading Mermaid: $error';
+    });
+    
+    return container;
+  }
+
+  Future<void> _ensureMermaidLoaded() async {
+    if (!kIsWeb) return;
+
+    // Check if Mermaid is already loaded using eval
+    try {
+      final result = (web.window as JSObject).callMethod('eval'.toJS, 'typeof mermaid'.toJS);
+      if (result.toString() != 'undefined') {
+        return;
+      }
+    } catch (e) {
+      // Continue to load if check fails
+    }
+
+    // Load Mermaid.js from CDN
+    final script = web.HTMLScriptElement()
+      ..src = 'https://cdn.jsdelivr.net/npm/mermaid@10.6.1/dist/mermaid.min.js'
+      ..type = 'text/javascript';
+
+    // Wait for script to load
+    final completer = Completer<void>();
+    
+    script.addEventListener('load', ((web.Event event) {
+      completer.complete();
+    }).toJS);
+    
+    script.addEventListener('error', ((web.Event event) {
+      completer.completeError('Failed to load Mermaid.js');
+    }).toJS);
+
+    web.document.head?.appendChild(script);
+    
+    await completer.future;
+  }
+
+    String _generateWebHtml() {
+    // Don't escape the code - Mermaid needs raw syntax
+    if (kDebugMode) {
+      print('Raw mermaid code: ${widget.mermaidCode}');
+    }
+    
+    return '''
+      <div id="mermaid-diagram-$_viewId" class="mermaid" style="background-color: ${widget.backgroundColor ?? 'transparent'};">
+${widget.mermaidCode}
+      </div>
+    ''';
   }
 
   void _initializeWebView() {
@@ -169,13 +310,36 @@ class _MermaidWidgetState extends State<MermaidWidget> {
 
   @override
   Widget build(BuildContext context) {
+    // For web platform, use HtmlElementView with Mermaid.js
+    if (kIsWeb) {
+      return Container(
+        height: widget.height,
+        width: widget.width,
+        constraints: widget.height == null 
+            ? const BoxConstraints(minHeight: 200, maxHeight: 600)
+            : null,
+        decoration: BoxDecoration(
+          border: Border.all(color: Theme.of(context).colorScheme.outline),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(8),
+          child: _viewId != null
+              ? HtmlElementView(viewType: _viewId!)
+              : const Center(child: CircularProgressIndicator()),
+        ),
+      );
+    }
+    
     // For platforms that don't support WebView, show a fallback
     if (!kIsWeb && (Platform.isLinux || Platform.isWindows || Platform.isMacOS)) {
       return _buildFallback();
     }
     
+    // For mobile platforms, use WebView
     return Container(
-      height: widget.height,
+      height: widget.height ?? 300,
+      width: widget.width,
       decoration: BoxDecoration(
         border: Border.all(color: Theme.of(context).colorScheme.outline),
         borderRadius: BorderRadius.circular(8),
@@ -184,8 +348,8 @@ class _MermaidWidgetState extends State<MermaidWidget> {
         borderRadius: BorderRadius.circular(8),
         child: Stack(
           children: [
-            if (!_isLoading && _error == null)
-              WebViewWidget(controller: controller),
+            if (!_isLoading && _error == null && controller != null)
+              WebViewWidget(controller: controller!),
             if (_isLoading)
               Center(
                 child: Column(
@@ -248,7 +412,8 @@ class _MermaidWidgetState extends State<MermaidWidget> {
 
   Widget _buildFallback() {
     return Container(
-      height: widget.height,
+      height: widget.height ?? 300,
+      width: widget.width,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         border: Border.all(color: Theme.of(context).colorScheme.outline),

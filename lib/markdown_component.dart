@@ -3,8 +3,8 @@ part of 'gpt_markdown.dart';
 /// Markdown components
 abstract class MarkdownComponent {
   static List<MarkdownComponent> get globalComponents => [
-    CodeBlockMd(),
     MermaidBlockMd(),
+    CodeBlockMd(),
     LatexMathMultiLine(),
     NewLines(),
     BlockQuote(),
@@ -1278,6 +1278,8 @@ class MermaidBlockMd extends BlockMd {
     return _DefaultMermaidWidget(
       mermaidCode: mermaidCode,
       textStyle: config.style,
+      defaultHeight: config.mermaidDefaultHeight,
+      defaultWidth: config.mermaidDefaultWidth,
     );
   }
 }
@@ -1287,10 +1289,14 @@ class _DefaultMermaidWidget extends StatelessWidget {
   const _DefaultMermaidWidget({
     required this.mermaidCode,
     this.textStyle,
+    this.defaultHeight,
+    this.defaultWidth,
   });
 
   final String mermaidCode;
   final TextStyle? textStyle;
+  final double? defaultHeight;
+  final double? defaultWidth;
 
   @override
   Widget build(BuildContext context) {

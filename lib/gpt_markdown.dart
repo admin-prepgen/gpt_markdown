@@ -45,6 +45,8 @@ class GptMarkdown extends StatelessWidget {
     this.inlineComponents,
     this.useDollarSignsForLatex = false,
     this.mermaidBuilder,
+    this.mermaidDefaultHeight,
+    this.mermaidDefaultWidth,
   });
 
   /// The direction of the text.
@@ -107,6 +109,12 @@ class GptMarkdown extends StatelessWidget {
 
   /// The mermaid builder.
   final MermaidBuilder? mermaidBuilder;
+
+  /// Default height for Mermaid diagrams (null = auto-size with constraints)
+  final double? mermaidDefaultHeight;
+
+  /// Default width for Mermaid diagrams (null = full width)
+  final double? mermaidDefaultWidth;
 
   /// The list of components.
   ///  ```dart
@@ -212,6 +220,8 @@ class GptMarkdown extends StatelessWidget {
           inlineComponents: inlineComponents,
           tableBuilder: tableBuilder,
           mermaidBuilder: mermaidBuilder,
+          mermaidDefaultHeight: mermaidDefaultHeight,
+          mermaidDefaultWidth: mermaidDefaultWidth,
         ),
       ),
     );

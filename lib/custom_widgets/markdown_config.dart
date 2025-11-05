@@ -102,6 +102,8 @@ class GptMarkdownConfig {
     this.inlineComponents,
     this.tableBuilder,
     this.mermaidBuilder,
+    this.mermaidDefaultHeight,
+    this.mermaidDefaultWidth,
   });
 
   /// The direction of the text.
@@ -167,6 +169,12 @@ class GptMarkdownConfig {
   /// The mermaid builder.
   final MermaidBuilder? mermaidBuilder;
 
+  /// Default height for Mermaid diagrams (null = auto-size with constraints)
+  final double? mermaidDefaultHeight;
+
+  /// Default width for Mermaid diagrams (null = full width)
+  final double? mermaidDefaultWidth;
+
   /// A copy of the configuration with the specified parameters.
   GptMarkdownConfig copyWith({
     TextStyle? style,
@@ -190,6 +198,8 @@ class GptMarkdownConfig {
     final List<MarkdownComponent>? inlineComponents,
     final TableBuilder? tableBuilder,
     final MermaidBuilder? mermaidBuilder,
+    final double? mermaidDefaultHeight,
+    final double? mermaidDefaultWidth,
   }) {
     return GptMarkdownConfig(
       style: style ?? this.style,
@@ -213,6 +223,8 @@ class GptMarkdownConfig {
       inlineComponents: inlineComponents ?? this.inlineComponents,
       tableBuilder: tableBuilder ?? this.tableBuilder,
       mermaidBuilder: mermaidBuilder ?? this.mermaidBuilder,
+      mermaidDefaultHeight: mermaidDefaultHeight ?? this.mermaidDefaultHeight,
+      mermaidDefaultWidth: mermaidDefaultWidth ?? this.mermaidDefaultWidth,
     );
   }
 
