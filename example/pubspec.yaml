@@ -12,10 +12,11 @@ dependencies:
 
   cupertino_icons: ^1.0.2
   gpt_markdown:
-    path: ../../gpt_markdown
+    path: ../
   flutter_math_fork: ^0.7.2
   watcher: ^1.1.0
   desktop_drop: ^0.4.4
+  webview_flutter: ^4.10.0
 
 dev_dependencies:
   flutter_test:

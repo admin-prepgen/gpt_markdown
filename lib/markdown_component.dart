@@ -4,6 +4,7 @@ part of 'gpt_markdown.dart';
 abstract class MarkdownComponent {
   static List<MarkdownComponent> get globalComponents => [
     CodeBlockMd(),
+    MermaidBlockMd(),
     LatexMathMultiLine(),
     NewLines(),
     BlockQuote(),
@@ -1241,4 +1242,125 @@ class CustomTableRow {
   final List<CustomTableField> fields;
 
   CustomTableRow({this.isHeader = false, required this.fields});
+}
+
+/// Mermaid diagram component
+class MermaidBlockMd extends BlockMd {
+  @override
+  String get expString => r"```mermaid\s*(.*?)\s*```";
+  
+  @override
+  RegExp get exp => RegExp(expString, dotAll: true, multiLine: true);
+
+  @override
+  Widget build(
+    BuildContext context,
+    String text,
+    final GptMarkdownConfig config,
+  ) {
+    // Extract the mermaid code from the matched text
+    final match = exp.firstMatch(text);
+    String mermaidCode = match?.group(1)?.trim() ?? '';
+    
+    // Remove any extra backticks that might be captured
+    mermaidCode = mermaidCode.replaceAll(RegExp(r'^```|```$'), '').trim();
+    
+    // If custom builder is provided, use it
+    if (config.mermaidBuilder != null) {
+      return config.mermaidBuilder!(
+        context,
+        mermaidCode,
+        config.style ?? const TextStyle(),
+      );
+    }
+    
+    // Default mermaid rendering
+    return _DefaultMermaidWidget(
+      mermaidCode: mermaidCode,
+      textStyle: config.style,
+    );
+  }
+}
+
+/// Default Mermaid widget implementation
+class _DefaultMermaidWidget extends StatelessWidget {
+  const _DefaultMermaidWidget({
+    required this.mermaidCode,
+    this.textStyle,
+  });
+
+  final String mermaidCode;
+  final TextStyle? textStyle;
+
+  @override
+  Widget build(BuildContext context) {
+    // For now, provide a fallback that shows the mermaid code in a formatted way
+    // This can be enhanced with actual mermaid rendering later
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.symmetric(vertical: 8),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: Theme.of(context).colorScheme.outline,
+          width: 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.account_tree,
+                color: Theme.of(context).colorScheme.primary,
+                size: 20,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'Mermaid Diagram',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: Theme.of(context).colorScheme.primary,
+                  fontSize: (textStyle?.fontSize ?? 14) + 2,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surface,
+              borderRadius: BorderRadius.circular(6),
+              border: Border.all(
+                color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.5),
+              ),
+            ),
+            child: Text(
+              mermaidCode,
+              style: TextStyle(
+                fontFamily: 'JetBrains Mono',
+                fontSize: (textStyle?.fontSize ?? 14) - 1,
+                color: textStyle?.color ?? Theme.of(context).colorScheme.onSurface,
+                height: 1.4,
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Use mermaidBuilder parameter to enable interactive diagram rendering',
+            style: TextStyle(
+              fontSize: (textStyle?.fontSize ?? 14) - 2,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+              fontStyle: FontStyle.italic,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }

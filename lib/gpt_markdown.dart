@@ -44,6 +44,7 @@ class GptMarkdown extends StatelessWidget {
     this.components,
     this.inlineComponents,
     this.useDollarSignsForLatex = false,
+    this.mermaidBuilder,
   });
 
   /// The direction of the text.
@@ -103,6 +104,9 @@ class GptMarkdown extends StatelessWidget {
 
   /// The table builder.
   final TableBuilder? tableBuilder;
+
+  /// The mermaid builder.
+  final MermaidBuilder? mermaidBuilder;
 
   /// The list of components.
   ///  ```dart
@@ -207,6 +211,7 @@ class GptMarkdown extends StatelessWidget {
           components: components,
           inlineComponents: inlineComponents,
           tableBuilder: tableBuilder,
+          mermaidBuilder: mermaidBuilder,
         ),
       ),
     );

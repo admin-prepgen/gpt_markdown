@@ -22,6 +22,7 @@ gpt_markdown is a drop-in replacement for flutter_markdown, offering extended su
 | ☑️ Check Box | ✅ |  |
 | ➖ Horizontal Line | ✅ |  |
 | 🔢 Latex Math | ✅ |  |
+| 📊 Mermaid Diagrams | ✅ |  |
 | ↩️ Indent | ✅ |
 | ↩️ BlockQuote | ✅ |
 | 🖼️ Image | ✅ |
@@ -107,6 +108,15 @@ Render a wide variety of content with full Markdown and LaTeX support, including
 \(\frac a b\)
 ```
 
+- Mermaid diagrams for flowcharts, sequence diagrams, and more
+```mermaid
+graph TD
+    A[Start] --> B{Is it working?}
+    B -->|Yes| C[Great!]
+    B -->|No| D[Fix it]
+    D --> B
+```
+
 - Radio button and checkbox
 
 ```
@@ -185,6 +195,18 @@ You can also use LaTeX for mathematical expressions. Here's an example:
 7 & 8 & 9
 \end{bmatrix}
 \]
+
+### Mermaid Diagrams
+
+You can also include interactive diagrams using Mermaid syntax:
+
+```mermaid
+graph LR
+    A[User Input] --> B[GPT Processing]
+    B --> C[Markdown Output]
+    C --> D[Flutter Rendering]
+    D --> E[Beautiful UI]
+```
 
 ### Conclusion
 

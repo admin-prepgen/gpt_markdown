@@ -4,6 +4,7 @@ import 'package:desktop_drop/desktop_drop.dart';
 import 'package:flutter/material.dart';
 import 'package:gpt_markdown/custom_widgets/selectable_adapter.dart';
 import 'package:gpt_markdown/gpt_markdown.dart';
+import 'package:gpt_markdown/custom_widgets/mermaid_widget.dart';
 import 'package:flutter_math_fork/flutter_math.dart';
 import 'package:watcher/watcher.dart';
 
@@ -75,7 +76,36 @@ class MyHomePage extends StatefulWidget {
 class _MyHomePageState extends State<MyHomePage> {
   TextDirection _direction = TextDirection.ltr;
   final TextEditingController _controller = TextEditingController(
-    text: r'''This is a sample markdown document.
+    text: r'''This is a sample markdown document with Mermaid support!
+
+## Mermaid Diagrams
+
+### Flowchart Example
+```mermaid
+graph TD
+    A[Christmas] -->|Get money| B(Go shopping)
+    B --> C{Let me think}
+    C -->|One| D[Laptop]
+    C -->|Two| E[iPhone]
+    C -->|Three| F[Car]
+```
+
+### Sequence Diagram
+```mermaid
+sequenceDiagram
+    participant Alice
+    participant Bob
+    Alice->>John: Hello John, how are you?
+    loop Healthcheck
+        John->>John: Fight against hypochondria
+    end
+    Note right of John: Rational thoughts <br/>prevail!
+    John-->>Alice: Great!
+    John->>Bob: How about you?
+    Bob-->>John: Jolly good!
+```
+
+## Regular Markdown
 * **bold**
 * *italic*
 * **_bold and italic_**
@@ -292,7 +322,53 @@ Horizontal rules can be used to separate sections:
 
 ## Conclusion
 
-This document was created to test the robustness of Markdown parsers and to ensure that all components, including advanced LaTeX expressions and nested structures, are rendered correctly. Enjoy testing and feel free to extend it further!
+### Mermaid Diagram Examples
+
+#### Class Diagram
+```mermaid
+classDiagram
+    class Animal {
+        +String name
+        +int age
+        +makeSound()
+    }
+    
+    class Dog {
+        +String breed
+        +bark()
+    }
+    
+    class Cat {
+        +bool isIndoor
+        +meow()
+    }
+    
+    Animal <|-- Dog
+    Animal <|-- Cat
+```
+
+#### State Diagram
+```mermaid
+stateDiagram-v2
+    [*] --> Still
+    Still --> [*]
+    Still --> Moving
+    Moving --> Still
+    Moving --> Crash
+    Crash --> [*]
+```
+
+#### Pie Chart
+```mermaid
+pie title Programming Languages Usage
+    "JavaScript" : 35
+    "Python" : 25
+    "Java" : 20
+    "C++" : 15
+    "Others" : 5
+```
+
+This document was created to test the robustness of Markdown parsers and to ensure that all components, including advanced LaTeX expressions, Mermaid diagrams, and nested structures, are rendered correctly. Enjoy testing and feel free to extend it further!
 ```
 ''',
   );
@@ -689,7 +765,18 @@ This document was created to test the robustness of Markdown parsers and to ensu
                                       //       ),
                                       //     ),
                                       //   );
-                                      // }
+                                      // },
+                                      mermaidBuilder: (context, code, style) {
+                                        // Return the advanced MermaidWidget for interactive rendering
+                                        return MermaidWidget(
+                                          mermaidCode: code,
+                                          height: 300,
+                                          backgroundColor: Theme.of(context).colorScheme.surface,
+                                          theme: Theme.of(context).brightness == Brightness.dark 
+                                              ? MermaidTheme.dark 
+                                              : MermaidTheme.default_,
+                                        );
+                                      },
                                     );
                                     if (selectable) {
                                       child = SelectionArea(

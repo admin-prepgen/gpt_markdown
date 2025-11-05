@@ -65,6 +65,14 @@ typedef HighlightBuilder =
 /// A builder function for the image.
 typedef ImageBuilder = Widget Function(BuildContext context, String imageUrl);
 
+/// A builder function for Mermaid diagrams.
+typedef MermaidBuilder =
+    Widget Function(
+      BuildContext context,
+      String mermaidCode,
+      TextStyle textStyle,
+    );
+
 /// A configuration class for the GPT Markdown component.
 ///
 /// The [GptMarkdownConfig] class is used to configure the GPT Markdown component.
@@ -93,6 +101,7 @@ class GptMarkdownConfig {
     this.components,
     this.inlineComponents,
     this.tableBuilder,
+    this.mermaidBuilder,
   });
 
   /// The direction of the text.
@@ -155,6 +164,9 @@ class GptMarkdownConfig {
   /// The table builder.
   final TableBuilder? tableBuilder;
 
+  /// The mermaid builder.
+  final MermaidBuilder? mermaidBuilder;
+
   /// A copy of the configuration with the specified parameters.
   GptMarkdownConfig copyWith({
     TextStyle? style,
@@ -177,6 +189,7 @@ class GptMarkdownConfig {
     final List<MarkdownComponent>? components,
     final List<MarkdownComponent>? inlineComponents,
     final TableBuilder? tableBuilder,
+    final MermaidBuilder? mermaidBuilder,
   }) {
     return GptMarkdownConfig(
       style: style ?? this.style,
@@ -199,6 +212,7 @@ class GptMarkdownConfig {
       components: components ?? this.components,
       inlineComponents: inlineComponents ?? this.inlineComponents,
       tableBuilder: tableBuilder ?? this.tableBuilder,
+      mermaidBuilder: mermaidBuilder ?? this.mermaidBuilder,
     );
   }
 

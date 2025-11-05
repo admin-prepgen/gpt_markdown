@@ -1,3 +1,13 @@
+## 1.2.0
+
+* 📊 **NEW:** Added Mermaid diagram support with `MermaidBlockMd` component
+* 🛠️ Added `MermaidBuilder` typedef for custom Mermaid rendering
+* 🌐 Included `MermaidWidget` using WebView for interactive diagram rendering
+* 🎨 Support for multiple Mermaid themes (default, dark, forest, neutral, base)
+* 📱 Cross-platform support with fallback rendering for unsupported platforms
+* 🔧 Added `mermaidBuilder` parameter to `GptMarkdownConfig` and `GptMarkdown`
+* 📚 Updated documentation and examples to showcase Mermaid functionality
+
 ## 1.1.4
 
 * 🔗 Fixed vertical alignment issue with link text rendering ([#92](https://github.com/Infinitix-LLC/gpt_markdown/issues/92))
