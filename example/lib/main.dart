@@ -1040,13 +1040,52 @@ Try toggling the **Fit to Height** checkbox for Mermaid diagrams to see the resp
                                         );
                                       },
                                       vegaLiteBuilder: (context, spec, config) {
-                                        return VegaLiteWidget(
-                                          vegaSpec: spec,
-                                          height: 300, // Standard height
-                                          aspectRatio: 4 / 3, // 4:3 aspect ratio for better proportions
-                                          backgroundColor: Theme.of(context).colorScheme.surface,
-                                          fitToHeight: false,
-                                        );
+                                        // Example different width configurations based on chart content
+                                        final specString = spec.toString();
+
+                                        // 50% width example for bar charts
+                                        if (specString.contains('"mark": "bar"')) {
+                                          return VegaLiteWidget(
+                                            vegaSpec: spec,
+                                            cssWidth: "50%",        // 50% width for bar charts
+                                            maxWidth: 600,          // Max 600px wide
+                                            maxHeight: 300,
+                                            backgroundColor: Theme.of(context).colorScheme.surface,
+                                            constrainHeight: false,
+                                          );
+                                        }
+                                        // 80% width example for line charts
+                                        else if (specString.contains('"mark": "line"')) {
+                                          return VegaLiteWidget(
+                                            vegaSpec: spec,
+                                            cssWidth: "80%",        // 80% width for line charts
+                                            maxWidth: 800,          // Max 800px wide
+                                            maxHeight: 300,
+                                            backgroundColor: Theme.of(context).colorScheme.surface,
+                                            constrainHeight: false,
+                                          );
+                                        }
+                                        // Fixed width example for other charts
+                                        else if (specString.contains('"mark": "circle"') || specString.contains('"mark": "point"')) {
+                                          return VegaLiteWidget(
+                                            vegaSpec: spec,
+                                            cssWidth: "400px",      // Fixed 400px width for scatter plots
+                                            maxHeight: 300,
+                                            backgroundColor: Theme.of(context).colorScheme.surface,
+                                            constrainHeight: false,
+                                          );
+                                        }
+                                        // Default responsive example
+                                        else {
+                                          return VegaLiteWidget(
+                                            vegaSpec: spec,
+                                            cssWidth: "100%",       // Full width for other charts
+                                            maxWidth: 800,          // But cap at 800px
+                                            maxHeight: 300,
+                                            backgroundColor: Theme.of(context).colorScheme.surface,
+                                            constrainHeight: false,
+                                          );
+                                        }
                                       },
                                     );
                                     if (selectable) {

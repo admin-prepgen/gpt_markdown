@@ -443,12 +443,10 @@ The default example includes:
 - Mathematical equations
 - Mermaid flowcharts and diagrams
 - Interactive Vega-Lite charts:
-  - Bar chart (sales by category)
-  - Line chart (temperature trends)
-  - Scatter plot (correlation analysis)
-  - Pie chart (market share)
-  - Area chart (revenue growth)
-  - Grouped bar chart (product comparison)
+  - Bar chart (50% width - sales data)
+  - Line chart (80% width - trend data)
+  - Scatter plot (400px fixed width - correlation data)
+  - Area chart (100% width with 800px max - filled trends)
 
 ---
 
@@ -701,12 +699,13 @@ Widget for rendering Vega-Lite charts.
 
 ```dart
 VegaLiteWidget(
-  String spec,
+  String vegaSpec,  // Required: Vega-Lite JSON specification
   {
-  double? height,
-  double? width,
-  Color? backgroundColor,
-  bool fitToHeight = false,
+  String? cssWidth,        // CSS width: "80%", "100%", "400px" for responsive/fixed sizing
+  double? maxWidth,        // Flutter constraint: maximum width in pixels
+  double? maxHeight,       // Flutter constraint: maximum height in pixels
+  Color? backgroundColor,  // Background color for the chart container
+  bool constrainHeight = false,  // Force chart to fit within maxHeight when true
   }
 )
 ```

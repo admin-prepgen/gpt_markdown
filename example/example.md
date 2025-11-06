@@ -152,6 +152,7 @@ Please see the [README.md](https://github.com/Infinitix-LLC/gpt_markdown) and al
 
 You can embed interactive Vega-Lite charts using the ```vega-lite syntax:
 
+### Bar Chart (50% width)
 ```vega-lite
 {
   "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
@@ -167,6 +168,66 @@ You can embed interactive Vega-Lite charts using the ```vega-lite syntax:
   "encoding": {
     "x": {"field": "a", "type": "nominal", "axis": {"labelAngle": 0}},
     "y": {"field": "b", "type": "quantitative"}
+  }
+}
+```
+
+### Line Chart (80% width)
+```vega-lite
+{
+  "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
+  "description": "A simple line chart showing trends.",
+  "data": {
+    "values": [
+      {"x": 1, "y": 28}, {"x": 2, "y": 55}, {"x": 3, "y": 43},
+      {"x": 4, "y": 91}, {"x": 5, "y": 81}, {"x": 6, "y": 53},
+      {"x": 7, "y": 19}, {"x": 8, "y": 87}, {"x": 9, "y": 72}
+    ]
+  },
+  "mark": "line",
+  "encoding": {
+    "x": {"field": "x", "type": "quantitative"},
+    "y": {"field": "y", "type": "quantitative"}
+  }
+}
+```
+
+### Scatter Plot (400px fixed width)
+```vega-lite
+{
+  "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
+  "description": "A scatter plot showing correlation.",
+  "data": {
+    "values": [
+      {"x": 1, "y": 28}, {"x": 2, "y": 55}, {"x": 3, "y": 43},
+      {"x": 4, "y": 91}, {"x": 5, "y": 81}, {"x": 6, "y": 53},
+      {"x": 7, "y": 19}, {"x": 8, "y": 87}, {"x": 9, "y": 72}
+    ]
+  },
+  "mark": "circle",
+  "encoding": {
+    "x": {"field": "x", "type": "quantitative"},
+    "y": {"field": "y", "type": "quantitative"}
+  }
+}
+```
+
+### Area Chart (100% width with 800px max)
+```vega-lite
+{
+  "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
+  "description": "An area chart showing filled trends.",
+  "data": {
+    "values": [
+      {"x": 1, "y": 28}, {"x": 2, "y": 55}, {"x": 3, "y": 43},
+      {"x": 4, "y": 91}, {"x": 5, "y": 81}, {"x": 6, "y": 53},
+      {"x": 7, "y": 19}, {"x": 8, "y": 87}, {"x": 9, "y": 72}
+    ]
+  },
+  "mark": "area",
+  "encoding": {
+    "x": {"field": "x", "type": "quantitative"},
+    "y": {"field": "y", "type": "quantitative"}
   }
 }
 ```
