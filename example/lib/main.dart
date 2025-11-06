@@ -576,12 +576,12 @@ This document was created to test the robustness of Markdown parsers and to ensu
 }
 ```
 
-### Fixed Width Chart Example (300px)
-*Note: This chart has `"width": "container"` in its spec, but the VegaLiteBuilder sets `width: 300`, which overrides the spec's width setting.*
+### Fixed Width Chart Example (300px width)
+*Note: This chart uses a 4:3 aspect ratio (width = height × 4/3) for consistent proportions across all charts.*
 ```vega-lite
 {
   "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
-  "description": "A bar chart with fixed width override.",
+  "description": "A bar chart with 4:3 aspect ratio.",
   "width": "container",
   "data": {
     "values": [
@@ -1040,13 +1040,10 @@ Try toggling the **Fit to Height** checkbox for Mermaid diagrams to see the resp
                                         );
                                       },
                                       vegaLiteBuilder: (context, spec, config) {
-                                        // Check if this is the fixed width example
-                                        bool isFixedWidthExample = spec.contains('"description": "A bar chart with fixed width override."');
-                                        
                                         return VegaLiteWidget(
                                           vegaSpec: spec,
-                                          height: 400,
-                                          width: isFixedWidthExample ? 300 : null, // Fixed width for demo
+                                          height: 300, // Standard height
+                                          aspectRatio: 4 / 3, // 4:3 aspect ratio for better proportions
                                           backgroundColor: Theme.of(context).colorScheme.surface,
                                           fitToHeight: false,
                                         );

@@ -17,6 +17,7 @@ class VegaLiteWidget extends StatefulWidget {
     required this.vegaSpec,
     this.height,
     this.width,
+    this.aspectRatio, // New parameter for aspect ratio
     this.backgroundColor,
     this.fitToHeight = false,
   });
@@ -24,6 +25,7 @@ class VegaLiteWidget extends StatefulWidget {
   final String vegaSpec;
   final double? height;
   final double? width;
+  final double? aspectRatio; // Width/Height ratio (e.g., 4/3 = 1.333)
   final Color? backgroundColor;
   final bool fitToHeight;
 
@@ -56,6 +58,7 @@ class _VegaLiteWidgetState extends State<VegaLiteWidget> {
         oldWidget.vegaSpec != widget.vegaSpec ||
         oldWidget.height != widget.height ||
         oldWidget.width != widget.width ||
+        oldWidget.aspectRatio != widget.aspectRatio ||
         oldWidget.backgroundColor != widget.backgroundColor) {
       
       if (kIsWeb && _viewId != null) {
@@ -114,17 +117,21 @@ class _VegaLiteWidgetState extends State<VegaLiteWidget> {
   }
 
   web.HTMLDivElement _createHtmlElement() {
+    // Calculate effective dimensions
+    final effectiveWidth = _calculateEffectiveWidth();
+    final effectiveHeight = widget.height;
+    
     final container = web.document.createElement('div') as web.HTMLDivElement;
     container.id = _viewId!;
-    container.style.width = widget.width != null ? '${widget.width}px' : '100%';
-    container.style.height = widget.height != null ? '${widget.height}px' : 'auto';
-    container.style.minHeight = widget.height != null ? '${widget.height}px' : '200px';
+    container.style.width = effectiveWidth != null ? '${effectiveWidth}px' : '100%';
+    container.style.height = effectiveHeight != null ? '${effectiveHeight}px' : 'auto';
+    container.style.minHeight = effectiveHeight != null ? '${effectiveHeight}px' : '200px';
     container.style.overflow = widget.fitToHeight ? 'hidden' : 'auto';
     container.style.position = 'relative';
     container.style.border = '1px solid #ccc';
     
     if (kDebugMode) {
-      print('Created Vega-Lite container element with height: ${widget.height ?? "auto"}px, width: ${widget.width ?? "100%"}');
+      print('Created Vega-Lite container element with height: ${effectiveHeight ?? "auto"}px, width: ${effectiveWidth ?? "100%"}');
       print('Vega spec length: ${widget.vegaSpec.length}');
       print('Vega spec preview: ${widget.vegaSpec.substring(0, widget.vegaSpec.length > 50 ? 50 : widget.vegaSpec.length)}...');
     }
@@ -153,6 +160,17 @@ class _VegaLiteWidgetState extends State<VegaLiteWidget> {
     return container;
   }
 
+  /// Calculate effective width based on aspect ratio or explicit width
+  double? _calculateEffectiveWidth() {
+    if (widget.width != null) {
+      return widget.width;
+    }
+    if (widget.aspectRatio != null && widget.height != null) {
+      return widget.height! * widget.aspectRatio!;
+    }
+    return null; // Will default to 100%
+  }
+
   void _initializeVegaChart() {
     final scriptCode = '''
       setTimeout(function() {
@@ -162,8 +180,9 @@ class _VegaLiteWidgetState extends State<VegaLiteWidget> {
             var opts = {
               actions: {
                 export: false,
+                editor: false,
                 source: false,
-                editor: false
+                compiled: false
               },
               hover: true
               ${widget.fitToHeight ? ',downloadFileName: "chart.svg"' : ''}
@@ -361,8 +380,9 @@ class _VegaLiteWidgetState extends State<VegaLiteWidget> {
             var opts = {
               actions: {
                 export: false,
+                editor: false,
                 source: false,
-                editor: false
+                compiled: false
               },
               hover: true
             };
@@ -379,11 +399,13 @@ class _VegaLiteWidgetState extends State<VegaLiteWidget> {
 
   @override
   Widget build(BuildContext context) {
+    final effectiveWidth = _calculateEffectiveWidth();
+    
     // For web platform, use HtmlElementView with vega-embed
     if (kIsWeb) {
       return Container(
         height: widget.height,
-        width: widget.width,
+        width: effectiveWidth,
         constraints: widget.height == null 
             ? const BoxConstraints(minHeight: 200, maxHeight: 600)
             : null,
@@ -408,7 +430,7 @@ class _VegaLiteWidgetState extends State<VegaLiteWidget> {
     // For mobile platforms, use WebView
     return Container(
       height: widget.height ?? 400,
-      width: widget.width,
+      width: effectiveWidth,
       decoration: BoxDecoration(
         border: Border.all(color: Theme.of(context).colorScheme.outline),
         borderRadius: BorderRadius.circular(8),
@@ -480,9 +502,11 @@ class _VegaLiteWidgetState extends State<VegaLiteWidget> {
   }
 
   Widget _buildFallback() {
+    final effectiveWidth = _calculateEffectiveWidth();
+    
     return Container(
       height: widget.height ?? 400,
-      width: widget.width,
+      width: effectiveWidth,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         border: Border.all(color: Theme.of(context).colorScheme.outline),
