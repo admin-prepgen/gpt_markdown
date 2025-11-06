@@ -161,12 +161,12 @@ class _VegaLiteWidgetState extends State<VegaLiteWidget> {
             var spec = ${widget.vegaSpec};
             var opts = {
               actions: {
-                export: true,
+                export: false,
                 source: false,
                 editor: false
               },
-              hover: true,
-              ${widget.fitToHeight ? 'downloadFileName: "chart.svg"' : ''}
+              hover: true
+              ${widget.fitToHeight ? ',downloadFileName: "chart.svg"' : ''}
             };
             vegaEmbed('#vega-container-$_viewId', spec, opts).catch(console.error);
           } catch (e) {
@@ -235,7 +235,7 @@ class _VegaLiteWidgetState extends State<VegaLiteWidget> {
     // Build inline styles for the vega container
     final vegaStyles = widget.fitToHeight
         ? 'width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; overflow: hidden; padding: 16px 0;'
-        : 'width: auto; max-width: 100%; height: auto; display: flex; align-items: center; justify-content: center; padding: 16px 0;';
+        : 'width: 100%; max-width: 100%; height: auto; display: flex; align-items: center; justify-content: center; padding: 16px 0;';
     
     return '''
       <div id="vega-container-$_viewId" class="vega" style="background-color: ${widget.backgroundColor ?? 'transparent'}; $vegaStyles">
@@ -306,7 +306,7 @@ class _VegaLiteWidgetState extends State<VegaLiteWidget> {
         
         /* Default behavior: natural sizing */
         .vega {
-            width: auto;
+            width: 100%;
             max-width: 100%;
             height: auto;
             display: flex;
@@ -360,7 +360,7 @@ class _VegaLiteWidgetState extends State<VegaLiteWidget> {
             var spec = ${widget.vegaSpec};
             var opts = {
               actions: {
-                export: true,
+                export: false,
                 source: false,
                 editor: false
               },

@@ -428,6 +428,7 @@ This document was created to test the robustness of Markdown parsers and to ensu
 {
   "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
   "description": "A simple bar chart with embedded data.",
+  "width": "container",
   "data": {
     "values": [
       {"a": "A", "b": 28}, {"a": "B", "b": 55}, {"a": "C", "b": 43},
@@ -448,6 +449,7 @@ This document was created to test the robustness of Markdown parsers and to ensu
 {
   "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
   "description": "A line chart showing temperature variation over months.",
+  "width": "container",
   "data": {
     "values": [
       {"month": "Jan", "temperature": 5},
@@ -478,6 +480,7 @@ This document was created to test the robustness of Markdown parsers and to ensu
 {
   "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
   "description": "A scatter plot showing the relationship between height and weight.",
+  "width": "container",
   "data": {
     "values": [
       {"name": "Alice", "height": 165, "weight": 60},
@@ -504,6 +507,7 @@ This document was created to test the robustness of Markdown parsers and to ensu
 {
   "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
   "description": "A pie chart showing market share distribution.",
+  "width": "container",
   "data": {
     "values": [
       {"company": "Apple", "market_share": 28},
@@ -527,6 +531,7 @@ This document was created to test the robustness of Markdown parsers and to ensu
 {
   "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
   "description": "An area chart showing sales revenue over quarters.",
+  "width": "container",
   "data": {
     "values": [
       {"quarter": "Q1", "revenue": 50000},
@@ -549,6 +554,7 @@ This document was created to test the robustness of Markdown parsers and to ensu
 {
   "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
   "description": "A grouped bar chart showing sales by product and region.",
+  "width": "container",
   "data": {
     "values": [
       {"product": "Product A", "region": "North", "sales": 45000},
@@ -566,6 +572,29 @@ This document was created to test the robustness of Markdown parsers and to ensu
     "color": {"field": "region", "type": "nominal"},
     "xOffset": {"field": "region"},
     "tooltip": [{"field": "product"}, {"field": "region"}, {"field": "sales"}]
+  }
+}
+```
+
+### Fixed Width Chart Example (300px)
+*Note: This chart has `"width": "container"` in its spec, but the VegaLiteBuilder sets `width: 300`, which overrides the spec's width setting.*
+```vega-lite
+{
+  "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
+  "description": "A bar chart with fixed width override.",
+  "width": "container",
+  "data": {
+    "values": [
+      {"category": "A", "value": 28},
+      {"category": "B", "value": 55},
+      {"category": "C", "value": 43},
+      {"category": "D", "value": 91}
+    ]
+  },
+  "mark": "bar",
+  "encoding": {
+    "x": {"field": "category", "type": "nominal"},
+    "y": {"field": "value", "type": "quantitative"}
   }
 }
 ```
@@ -1011,10 +1040,13 @@ Try toggling the **Fit to Height** checkbox for Mermaid diagrams to see the resp
                                         );
                                       },
                                       vegaLiteBuilder: (context, spec, config) {
+                                        // Check if this is the fixed width example
+                                        bool isFixedWidthExample = spec.contains('"description": "A bar chart with fixed width override."');
+                                        
                                         return VegaLiteWidget(
                                           vegaSpec: spec,
                                           height: 400,
-                                          width: null,
+                                          width: isFixedWidthExample ? 300 : null, // Fixed width for demo
                                           backgroundColor: Theme.of(context).colorScheme.surface,
                                           fitToHeight: false,
                                         );
