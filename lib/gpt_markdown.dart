@@ -13,6 +13,8 @@ import 'dart:math';
 import 'custom_widgets/code_field.dart';
 import 'custom_widgets/indent_widget.dart';
 import 'custom_widgets/link_button.dart';
+import 'custom_widgets/mermaid_widget.dart';
+import 'custom_widgets/vega_lite_widget.dart';
 
 part 'theme.dart';
 part 'markdown_component.dart';
@@ -47,6 +49,9 @@ class GptMarkdown extends StatelessWidget {
     this.mermaidBuilder,
     this.mermaidDefaultHeight,
     this.mermaidDefaultWidth,
+    this.vegaLiteBuilder,
+    this.vegaLiteDefaultHeight,
+    this.vegaLiteDefaultWidth,
   });
 
   /// The direction of the text.
@@ -115,6 +120,15 @@ class GptMarkdown extends StatelessWidget {
 
   /// Default width for Mermaid diagrams (null = full width)
   final double? mermaidDefaultWidth;
+
+  /// The vega-lite builder.
+  final VegaLiteBuilder? vegaLiteBuilder;
+
+  /// Default height for Vega-Lite charts (null = auto-size with constraints)
+  final double? vegaLiteDefaultHeight;
+
+  /// Default width for Vega-Lite charts (null = full width)
+  final double? vegaLiteDefaultWidth;
 
   /// The list of components.
   ///  ```dart
@@ -222,6 +236,9 @@ class GptMarkdown extends StatelessWidget {
           mermaidBuilder: mermaidBuilder,
           mermaidDefaultHeight: mermaidDefaultHeight,
           mermaidDefaultWidth: mermaidDefaultWidth,
+          vegaLiteBuilder: vegaLiteBuilder,
+          vegaLiteDefaultHeight: vegaLiteDefaultHeight,
+          vegaLiteDefaultWidth: vegaLiteDefaultWidth,
         ),
       ),
     );

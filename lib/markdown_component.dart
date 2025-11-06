@@ -3,6 +3,7 @@ part of 'gpt_markdown.dart';
 /// Markdown components
 abstract class MarkdownComponent {
   static List<MarkdownComponent> get globalComponents => [
+    VegaLiteBlockMd(),
     MermaidBlockMd(),
     CodeBlockMd(),
     LatexMathMultiLine(),
@@ -1370,3 +1371,132 @@ class _DefaultMermaidWidget extends StatelessWidget {
     );
   }
 }
+
+/// Vega-Lite chart component
+class VegaLiteBlockMd extends BlockMd {
+  @override
+  String get expString => r"```vega-lite\s*(.*?)\s*```";
+  
+  @override
+  RegExp get exp => RegExp(expString, dotAll: true, multiLine: true);
+
+  @override
+  Widget build(
+    BuildContext context,
+    String text,
+    final GptMarkdownConfig config,
+  ) {
+    // Extract the vega-lite spec from the matched text
+    final match = exp.firstMatch(text);
+    String vegaSpec = match?.group(1)?.trim() ?? '';
+    
+    // Remove any extra backticks that might be captured
+    vegaSpec = vegaSpec.replaceAll(RegExp(r'^```|```$'), '').trim();
+    
+    // If custom builder is provided, use it
+    if (config.vegaLiteBuilder != null) {
+      return config.vegaLiteBuilder!(
+        context,
+        vegaSpec,
+        config.style ?? const TextStyle(),
+      );
+    }
+    
+    // Default vega-lite rendering
+    return _DefaultVegaLiteWidget(
+      vegaSpec: vegaSpec,
+      textStyle: config.style,
+      defaultHeight: config.vegaLiteDefaultHeight,
+      defaultWidth: config.vegaLiteDefaultWidth,
+    );
+  }
+}
+
+/// Default Vega-Lite widget implementation
+class _DefaultVegaLiteWidget extends StatelessWidget {
+  const _DefaultVegaLiteWidget({
+    required this.vegaSpec,
+    this.textStyle,
+    this.defaultHeight,
+    this.defaultWidth,
+  });
+
+  final String vegaSpec;
+  final TextStyle? textStyle;
+  final double? defaultHeight;
+  final double? defaultWidth;
+
+  @override
+  Widget build(BuildContext context) {
+    // For now, provide a fallback that shows the vega spec in a formatted way
+    // This can be enhanced with actual vega rendering later
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.symmetric(vertical: 8),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: Theme.of(context).colorScheme.outline,
+          width: 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.bar_chart,
+                color: Theme.of(context).colorScheme.primary,
+                size: 20,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'Vega-Lite Chart',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surface,
+              borderRadius: BorderRadius.circular(6),
+              border: Border.all(
+                color: Theme.of(context).colorScheme.outline,
+                width: 0.5,
+              ),
+            ),
+            child: SingleChildScrollView(
+              child: Text(
+                vegaSpec,
+                style: TextStyle(
+                  fontFamily: 'monospace',
+                  fontSize: (textStyle?.fontSize ?? 14) - 2,
+                  color: Theme.of(context).colorScheme.onSurface,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Use vegaLiteBuilder parameter to enable interactive chart rendering',
+            style: TextStyle(
+              fontSize: (textStyle?.fontSize ?? 14) - 2,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+              fontStyle: FontStyle.italic,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+

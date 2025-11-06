@@ -73,6 +73,14 @@ typedef MermaidBuilder =
       TextStyle textStyle,
     );
 
+/// A builder function for Vega-Lite charts.
+typedef VegaLiteBuilder =
+    Widget Function(
+      BuildContext context,
+      String vegaSpec,
+      TextStyle textStyle,
+    );
+
 /// A configuration class for the GPT Markdown component.
 ///
 /// The [GptMarkdownConfig] class is used to configure the GPT Markdown component.
@@ -104,6 +112,9 @@ class GptMarkdownConfig {
     this.mermaidBuilder,
     this.mermaidDefaultHeight,
     this.mermaidDefaultWidth,
+    this.vegaLiteBuilder,
+    this.vegaLiteDefaultHeight,
+    this.vegaLiteDefaultWidth,
   });
 
   /// The direction of the text.
@@ -175,6 +186,15 @@ class GptMarkdownConfig {
   /// Default width for Mermaid diagrams (null = full width)
   final double? mermaidDefaultWidth;
 
+  /// The vega-lite builder.
+  final VegaLiteBuilder? vegaLiteBuilder;
+
+  /// Default height for Vega-Lite charts (null = auto-size with constraints)
+  final double? vegaLiteDefaultHeight;
+
+  /// Default width for Vega-Lite charts (null = full width)
+  final double? vegaLiteDefaultWidth;
+
   /// A copy of the configuration with the specified parameters.
   GptMarkdownConfig copyWith({
     TextStyle? style,
@@ -200,6 +220,9 @@ class GptMarkdownConfig {
     final MermaidBuilder? mermaidBuilder,
     final double? mermaidDefaultHeight,
     final double? mermaidDefaultWidth,
+    final VegaLiteBuilder? vegaLiteBuilder,
+    final double? vegaLiteDefaultHeight,
+    final double? vegaLiteDefaultWidth,
   }) {
     return GptMarkdownConfig(
       style: style ?? this.style,
@@ -225,6 +248,9 @@ class GptMarkdownConfig {
       mermaidBuilder: mermaidBuilder ?? this.mermaidBuilder,
       mermaidDefaultHeight: mermaidDefaultHeight ?? this.mermaidDefaultHeight,
       mermaidDefaultWidth: mermaidDefaultWidth ?? this.mermaidDefaultWidth,
+      vegaLiteBuilder: vegaLiteBuilder ?? this.vegaLiteBuilder,
+      vegaLiteDefaultHeight: vegaLiteDefaultHeight ?? this.vegaLiteDefaultHeight,
+      vegaLiteDefaultWidth: vegaLiteDefaultWidth ?? this.vegaLiteDefaultWidth,
     );
   }
 

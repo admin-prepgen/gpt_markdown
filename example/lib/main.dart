@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:gpt_markdown/custom_widgets/selectable_adapter.dart';
 import 'package:gpt_markdown/gpt_markdown.dart';
 import 'package:gpt_markdown/custom_widgets/mermaid_widget.dart';
+import 'package:gpt_markdown/custom_widgets/vega_lite_widget.dart';
 import 'package:flutter_math_fork/flutter_math.dart';
 import 'package:watcher/watcher.dart';
 
@@ -418,6 +419,172 @@ xychart horizontal
 ```
 
 This document was created to test the robustness of Markdown parsers and to ensure that all components, including advanced LaTeX expressions, Mermaid diagrams, and nested structures, are rendered correctly. Enjoy testing and feel free to extend it further!
+```
+
+## Vega-Lite Charts
+
+### Bar Chart
+```vega-lite
+{
+  "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
+  "description": "A simple bar chart with embedded data.",
+  "data": {
+    "values": [
+      {"a": "A", "b": 28}, {"a": "B", "b": 55}, {"a": "C", "b": 43},
+      {"a": "D", "b": 91}, {"a": "E", "b": 81}, {"a": "F", "b": 53},
+      {"a": "G", "b": 19}, {"a": "H", "b": 87}
+    ]
+  },
+  "mark": "bar",
+  "encoding": {
+    "x": {"field": "a", "type": "nominal", "axis": {"labelAngle": 0}},
+    "y": {"field": "b", "type": "quantitative"}
+  }
+}
+```
+
+### Line Chart - Temperature Trend
+```vega-lite
+{
+  "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
+  "description": "A line chart showing temperature variation over months.",
+  "data": {
+    "values": [
+      {"month": "Jan", "temperature": 5},
+      {"month": "Feb", "temperature": 8},
+      {"month": "Mar", "temperature": 12},
+      {"month": "Apr", "temperature": 18},
+      {"month": "May", "temperature": 24},
+      {"month": "Jun", "temperature": 28},
+      {"month": "Jul", "temperature": 30},
+      {"month": "Aug", "temperature": 28},
+      {"month": "Sep", "temperature": 23},
+      {"month": "Oct", "temperature": 16},
+      {"month": "Nov", "temperature": 10},
+      {"month": "Dec", "temperature": 6}
+    ]
+  },
+  "mark": {"type": "line", "point": true, "tooltip": true},
+  "encoding": {
+    "x": {"field": "month", "type": "nominal", "axis": {"labelAngle": 0}},
+    "y": {"field": "temperature", "type": "quantitative", "title": "Temperature (°C)"},
+    "tooltip": [{"field": "month", "type": "nominal"}, {"field": "temperature", "type": "quantitative"}]
+  }
+}
+```
+
+### Scatter Plot - Height vs Weight
+```vega-lite
+{
+  "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
+  "description": "A scatter plot showing the relationship between height and weight.",
+  "data": {
+    "values": [
+      {"name": "Alice", "height": 165, "weight": 60},
+      {"name": "Bob", "height": 180, "weight": 75},
+      {"name": "Charlie", "height": 170, "weight": 65},
+      {"name": "Diana", "height": 155, "weight": 50},
+      {"name": "Eve", "height": 175, "weight": 72},
+      {"name": "Frank", "height": 160, "weight": 58},
+      {"name": "Grace", "height": 168, "weight": 62}
+    ]
+  },
+  "mark": "circle",
+  "encoding": {
+    "x": {"field": "height", "type": "quantitative", "title": "Height (cm)"},
+    "y": {"field": "weight", "type": "quantitative", "title": "Weight (kg)"},
+    "size": {"value": 200},
+    "tooltip": [{"field": "name"}, {"field": "height"}, {"field": "weight"}]
+  }
+}
+```
+
+### Pie Chart - Market Share
+```vega-lite
+{
+  "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
+  "description": "A pie chart showing market share distribution.",
+  "data": {
+    "values": [
+      {"company": "Apple", "market_share": 28},
+      {"company": "Microsoft", "market_share": 22},
+      {"company": "Google", "market_share": 20},
+      {"company": "Amazon", "market_share": 15},
+      {"company": "Others", "market_share": 15}
+    ]
+  },
+  "mark": "arc",
+  "encoding": {
+    "theta": {"field": "market_share", "type": "quantitative"},
+    "color": {"field": "company", "type": "nominal"},
+    "tooltip": [{"field": "company"}, {"field": "market_share", "type": "quantitative"}]
+  }
+}
+```
+
+### Area Chart - Sales Revenue Over Time
+```vega-lite
+{
+  "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
+  "description": "An area chart showing sales revenue over quarters.",
+  "data": {
+    "values": [
+      {"quarter": "Q1", "revenue": 50000},
+      {"quarter": "Q2", "revenue": 65000},
+      {"quarter": "Q3", "revenue": 75000},
+      {"quarter": "Q4", "revenue": 90000}
+    ]
+  },
+  "mark": {"type": "area", "line": true},
+  "encoding": {
+    "x": {"field": "quarter", "type": "nominal", "axis": {"labelAngle": 0}},
+    "y": {"field": "revenue", "type": "quantitative", "title": "Revenue ($)"},
+    "tooltip": [{"field": "quarter"}, {"field": "revenue", "type": "quantitative"}]
+  }
+}
+```
+
+### Grouped Bar Chart - Sales by Product
+```vega-lite
+{
+  "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
+  "description": "A grouped bar chart showing sales by product and region.",
+  "data": {
+    "values": [
+      {"product": "Product A", "region": "North", "sales": 45000},
+      {"product": "Product A", "region": "South", "sales": 38000},
+      {"product": "Product B", "region": "North", "sales": 52000},
+      {"product": "Product B", "region": "South", "sales": 61000},
+      {"product": "Product C", "region": "North", "sales": 30000},
+      {"product": "Product C", "region": "South", "sales": 35000}
+    ]
+  },
+  "mark": "bar",
+  "encoding": {
+    "x": {"field": "product", "type": "nominal"},
+    "y": {"field": "sales", "type": "quantitative", "title": "Sales ($)"},
+    "color": {"field": "region", "type": "nominal"},
+    "xOffset": {"field": "region"},
+    "tooltip": [{"field": "product"}, {"field": "region"}, {"field": "sales"}]
+  }
+}
+```
+
+---
+
+## Summary
+
+This comprehensive document demonstrates all the key features of the **gpt_markdown** package:
+
+- ✅ **Markdown Elements**: Headers, lists, emphasis, code blocks, blockquotes
+- ✅ **LaTeX Math**: Both inline and display math expressions
+- ✅ **Mermaid Diagrams**: Flowcharts, sequence diagrams, class diagrams, pie charts, and more
+- ✅ **Vega-Lite Charts**: Interactive data visualizations including bars, lines, scatter plots, pie charts, and area charts
+- ✅ **Tables**: Standard markdown tables with alignment
+- ✅ **Images and Links**: Both regular and embedded links
+- ✅ **Complex Nesting**: All elements can be combined and nested
+
+Try toggling the **Fit to Height** checkbox for Mermaid diagrams to see the responsive behavior in action!
 ```
 ''',
   );
@@ -841,6 +1008,15 @@ This document was created to test the robustness of Markdown parsers and to ensu
                                               ],
                                             );
                                           },
+                                        );
+                                      },
+                                      vegaLiteBuilder: (context, spec, config) {
+                                        return VegaLiteWidget(
+                                          vegaSpec: spec,
+                                          height: 400,
+                                          width: null,
+                                          backgroundColor: Theme.of(context).colorScheme.surface,
+                                          fitToHeight: false,
                                         );
                                       },
                                     );
