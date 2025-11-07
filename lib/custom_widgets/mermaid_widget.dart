@@ -19,7 +19,8 @@ class MermaidWidget extends StatefulWidget {
     this.width,
     this.backgroundColor,
     this.theme = MermaidTheme.default_,
-    this.fitToHeight = false,
+    this.fitContainer = false,
+    this.internalPadding,
   });
 
   final String mermaidCode;
@@ -27,7 +28,15 @@ class MermaidWidget extends StatefulWidget {
   final double? width;
   final Color? backgroundColor;
   final MermaidTheme theme;
-  final bool fitToHeight;
+  
+  /// If true, the widget will automatically fit to its parent container's size.
+  /// This takes precedence over explicit width/height parameters.
+  /// Works with LayoutBuilder to determine available space.
+  final bool fitContainer;
+  
+  /// Custom padding around the diagram content.
+  /// Defaults to EdgeInsets.all(16.0) if not specified.
+  final EdgeInsets? internalPadding;
 
   @override
   State<MermaidWidget> createState() => _MermaidWidgetState();
@@ -53,8 +62,9 @@ class _MermaidWidgetState extends State<MermaidWidget> {
   void didUpdateWidget(MermaidWidget oldWidget) {
     super.didUpdateWidget(oldWidget);
     
-    // If fitToHeight or other rendering params changed, rebuild
-    if (oldWidget.fitToHeight != widget.fitToHeight ||
+    // If fitContainer or other rendering params changed, rebuild
+    if (oldWidget.fitContainer != widget.fitContainer ||
+        oldWidget.internalPadding != widget.internalPadding ||
         oldWidget.theme != widget.theme ||
         oldWidget.mermaidCode != widget.mermaidCode ||
         oldWidget.height != widget.height ||
@@ -81,8 +91,8 @@ class _MermaidWidgetState extends State<MermaidWidget> {
     // Find the existing container and update its CSS
     final container = web.document.querySelector('#$_viewId') as web.HTMLDivElement?;
     if (container != null) {
-      // Update overflow style based on fitToHeight
-      container.style.overflow = widget.fitToHeight ? 'hidden' : 'auto';
+      // Update overflow style based on fitContainer
+      container.style.overflow = widget.fitContainer ? 'hidden' : 'auto';
       
       // Re-render the diagram
       _ensureMermaidLoaded().then((_) {
@@ -110,23 +120,23 @@ class _MermaidWidgetState extends State<MermaidWidget> {
             flowchart: {
               useMaxWidth: true,
               htmlLabels: true,
-              ${widget.fitToHeight ? 'useMaxHeight: true,' : ''}
+              ${widget.fitContainer ? 'useMaxHeight: true,' : ''}
               curve: 'basis'
             },
             sequence: {
               useMaxWidth: true,
-              ${widget.fitToHeight ? 'useMaxHeight: true,' : ''}
+              ${widget.fitContainer ? 'useMaxHeight: true,' : ''}
             },
             gantt: {
               useMaxWidth: true,
-              ${widget.fitToHeight ? 'useMaxHeight: true,' : ''}
+              ${widget.fitContainer ? 'useMaxHeight: true,' : ''}
             },
             pie: {
               useMaxWidth: true
             },
             xychart: {
               useMaxWidth: true,
-              ${widget.fitToHeight ? 'useMaxHeight: true' : ''}
+              ${widget.fitContainer ? 'useMaxHeight: true' : ''}
             }
           });
           try {
@@ -134,7 +144,7 @@ class _MermaidWidgetState extends State<MermaidWidget> {
               // Optimize SVG sizing after render
               var svg = document.querySelector('[id*="mermaid-diagram"] svg');
               if (svg) {
-                if (${widget.fitToHeight.toString()}) {
+                if (${widget.fitContainer.toString()}) {
                   svg.style.maxWidth = '100%';
                   svg.style.maxHeight = '100%';
                   svg.style.width = 'auto';
@@ -179,15 +189,15 @@ class _MermaidWidgetState extends State<MermaidWidget> {
   web.HTMLDivElement _createHtmlElement() {
     final container = web.document.createElement('div') as web.HTMLDivElement;
     container.id = _viewId!;
-    container.style.width = widget.width != null ? '${widget.width}px' : '100%';
-    container.style.height = widget.height != null ? '${widget.height}px' : 'auto';
-    container.style.minHeight = widget.height != null ? '${widget.height}px' : '200px';
-    container.style.overflow = widget.fitToHeight ? 'hidden' : 'auto';
+    container.style.width = widget.fitContainer ? '100%' : (widget.width != null ? '${widget.width}px' : '100%');
+    container.style.height = widget.fitContainer ? '100%' : (widget.height != null ? '${widget.height}px' : 'auto');
+    container.style.minHeight = widget.fitContainer ? '100%' : (widget.height != null ? '${widget.height}px' : '200px');
+    container.style.overflow = widget.fitContainer ? 'hidden' : 'auto';
     container.style.position = 'relative';
     container.style.border = '1px solid #ccc';
     
     if (kDebugMode) {
-      print('Created container element with height: ${widget.height ?? "auto"}px, width: ${widget.width ?? "100%"}');
+      print('Created container element with height: ${widget.fitContainer ? "100%" : (widget.height ?? "auto")}px, width: ${widget.fitContainer ? "100%" : (widget.width ?? "100%")}');
       print('Mermaid code length: ${widget.mermaidCode.length}');
       print('Mermaid code preview: ${widget.mermaidCode.substring(0, widget.mermaidCode.length > 50 ? 50 : widget.mermaidCode.length)}...');
     }
@@ -256,16 +266,22 @@ class _MermaidWidgetState extends State<MermaidWidget> {
       print('Raw mermaid code: ${widget.mermaidCode}');
     }
     
+    // Calculate padding values
+    final paddingTop = widget.internalPadding?.top ?? 16.0;
+    final paddingBottom = widget.internalPadding?.bottom ?? 16.0;
+    final paddingLeft = widget.internalPadding?.left ?? (widget.fitContainer ? 16.0 : 0.0);
+    final paddingRight = widget.internalPadding?.right ?? (widget.fitContainer ? 16.0 : 0.0);
+    
     // Build inline styles for the mermaid div
-    final mermaidStyles = widget.fitToHeight
-        ? 'width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; overflow: hidden; padding: 16px 0;'
-        : 'width: auto; max-width: 100%; height: auto; display: flex; align-items: center; justify-content: center; padding: 16px 0;';
+    final mermaidStyles = widget.fitContainer
+        ? 'width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; overflow: hidden; padding: ${paddingTop}px ${paddingRight}px ${paddingBottom}px ${paddingLeft}px;'
+        : 'width: auto; max-width: 100%; height: auto; display: flex; align-items: center; justify-content: center; padding: ${paddingTop}px ${paddingRight}px ${paddingBottom}px ${paddingLeft}px;';
     
     return '''
       <style>
         .mermaid svg {
           max-width: 100%;
-          ${widget.fitToHeight ? 'max-height: 100%; width: auto; height: auto; object-fit: contain;' : 'height: auto;'}
+          ${widget.fitContainer ? 'max-height: 100%; width: auto; height: auto; object-fit: contain;' : 'height: auto;'}
         }
       </style>
       <div id="mermaid-diagram-$_viewId" class="mermaid" style="background-color: ${widget.backgroundColor ?? 'transparent'}; $mermaidStyles">
@@ -303,6 +319,22 @@ ${widget.mermaidCode}
           '${((widget.backgroundColor!.b * 255.0).round() & 0xff).toRadixString(16).padLeft(2, '0')}'
         : 'ffffff';
     
+    // Calculate padding values
+    final containerPaddingTop = widget.internalPadding?.top ?? 16.0;
+    final containerPaddingRight = widget.internalPadding?.right ?? 16.0;
+    final containerPaddingBottom = widget.internalPadding?.bottom ?? 16.0;
+    final containerPaddingLeft = widget.internalPadding?.left ?? 16.0;
+    
+    final mermaidPaddingTop = widget.internalPadding?.top ?? 16.0;
+    final mermaidPaddingRight = widget.internalPadding?.right ?? 0.0;
+    final mermaidPaddingBottom = widget.internalPadding?.bottom ?? 16.0;
+    final mermaidPaddingLeft = widget.internalPadding?.left ?? 0.0;
+    
+    final fitContainerPaddingTop = widget.internalPadding?.top ?? 16.0;
+    final fitContainerPaddingRight = widget.internalPadding?.right ?? 16.0;
+    final fitContainerPaddingBottom = widget.internalPadding?.bottom ?? 16.0;
+    final fitContainerPaddingLeft = widget.internalPadding?.left ?? 16.0;
+    
     return '''
 <!DOCTYPE html>
 <html>
@@ -329,7 +361,7 @@ ${widget.mermaidCode}
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: 16px;
+            padding: ${containerPaddingTop}px ${containerPaddingRight}px ${containerPaddingBottom}px ${containerPaddingLeft}px;
             box-sizing: border-box;
             overflow: auto;
         }
@@ -342,19 +374,19 @@ ${widget.mermaidCode}
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: 16px 0;
+            padding: ${mermaidPaddingTop}px ${mermaidPaddingRight}px ${mermaidPaddingBottom}px ${mermaidPaddingLeft}px;
         }
         
-        /* Fit to height mode: constrained sizing */
-        .mermaid.fit-to-height {
+        /* Fit container mode: constrained sizing */
+        .mermaid.fit-container {
             width: 100%;
-            height: calc(100% - 32px);
+            height: 100%;
             max-width: none;
             display: flex;
             align-items: center;
             justify-content: center;
             overflow: hidden;
-            padding: 16px 0;
+            padding: ${fitContainerPaddingTop}px ${fitContainerPaddingRight}px ${fitContainerPaddingBottom}px ${fitContainerPaddingLeft}px;
         }
         
         .mermaid svg {
@@ -362,7 +394,7 @@ ${widget.mermaidCode}
             height: auto;
         }
         
-        .mermaid.fit-to-height svg {
+        .mermaid.fit-container svg {
             max-width: 100%;
             max-height: 100%;
             width: auto;
@@ -381,7 +413,7 @@ ${widget.mermaidCode}
 </head>
 <body>
     <div class="mermaid-container">
-        <div class="mermaid${widget.fitToHeight ? ' fit-to-height' : ''}" id="mermaid-diagram">
+        <div class="mermaid${widget.fitContainer ? ' fit-container' : ''}" id="mermaid-diagram">
             ${widget.mermaidCode}
         </div>
     </div>
@@ -397,23 +429,23 @@ ${widget.mermaidCode}
                 flowchart: {
                     useMaxWidth: true,
                     htmlLabels: true,
-                    ${widget.fitToHeight ? 'useMaxHeight: true,' : ''}
+                    ${widget.fitContainer ? 'useMaxHeight: true,' : ''}
                     curve: 'basis'
                 },
                 sequence: {
                     useMaxWidth: true,
-                    ${widget.fitToHeight ? 'useMaxHeight: true,' : ''}
+                    ${widget.fitContainer ? 'useMaxHeight: true,' : ''}
                 },
                 gantt: {
                     useMaxWidth: true,
-                    ${widget.fitToHeight ? 'useMaxHeight: true,' : ''}
+                    ${widget.fitContainer ? 'useMaxHeight: true,' : ''}
                 },
                 pie: {
                     useMaxWidth: true
                 },
                 xychart: {
                     useMaxWidth: true,
-                    ${widget.fitToHeight ? 'useMaxHeight: true' : ''}
+                    ${widget.fitContainer ? 'useMaxHeight: true' : ''}
                 }
             });
         } catch (error) {
@@ -455,12 +487,42 @@ ${widget.mermaidCode}
 
   @override
   Widget build(BuildContext context) {
+    // If fitContainer is true, wrap in LayoutBuilder to get parent constraints
+    if (widget.fitContainer) {
+      return LayoutBuilder(
+        builder: (context, constraints) {
+          // Use finite constraints, fallback to reasonable defaults
+          final availableWidth = constraints.maxWidth.isFinite 
+              ? constraints.maxWidth 
+              : (constraints.minWidth > 0 ? constraints.minWidth : 800.0);
+          final availableHeight = constraints.maxHeight.isFinite 
+              ? constraints.maxHeight 
+              : (constraints.minHeight > 0 ? constraints.minHeight : 400.0);
+          
+          return _buildWidget(
+            context,
+            width: availableWidth,
+            height: availableHeight,
+          );
+        },
+      );
+    }
+    
+    // Standard mode - use explicit dimensions
+    return _buildWidget(
+      context,
+      width: widget.width,
+      height: widget.height,
+    );
+  }
+  
+  Widget _buildWidget(BuildContext context, {double? width, double? height}) {
     // For web platform, use HtmlElementView with Mermaid.js
     if (kIsWeb) {
       return Container(
-        height: widget.height,
-        width: widget.width,
-        constraints: widget.height == null 
+        height: height,
+        width: width,
+        constraints: height == null && !widget.fitContainer
             ? const BoxConstraints(minHeight: 200, maxHeight: 600)
             : null,
         decoration: BoxDecoration(
@@ -483,8 +545,8 @@ ${widget.mermaidCode}
     
     // For mobile platforms, use WebView
     return Container(
-      height: widget.height ?? 300,
-      width: widget.width,
+      height: height ?? 300,
+      width: width,
       decoration: BoxDecoration(
         border: Border.all(color: Theme.of(context).colorScheme.outline),
         borderRadius: BorderRadius.circular(8),

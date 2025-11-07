@@ -20,6 +20,8 @@ class VegaLiteWidget extends StatefulWidget {
     this.maxHeight,
     this.backgroundColor,
     this.constrainHeight = false,
+    this.fitContainer = false,        // Auto-fit to parent container dimensions
+    this.internalPadding,             // Internal padding for the chart
   });
 
   final String vegaSpec;
@@ -28,6 +30,8 @@ class VegaLiteWidget extends StatefulWidget {
   final double? maxHeight;
   final Color? backgroundColor;
   final bool constrainHeight;
+  final bool fitContainer;     // When true, uses LayoutBuilder to get exact container size
+  final EdgeInsets? internalPadding; // Internal padding for chart content
 
   @override
   State<VegaLiteWidget> createState() => _VegaLiteWidgetState();
@@ -59,7 +63,9 @@ class _VegaLiteWidgetState extends State<VegaLiteWidget> {
         oldWidget.cssWidth != widget.cssWidth ||
         oldWidget.maxHeight != widget.maxHeight ||
         oldWidget.maxWidth != widget.maxWidth ||
-        oldWidget.backgroundColor != widget.backgroundColor) {
+        oldWidget.backgroundColor != widget.backgroundColor ||
+        oldWidget.fitContainer != widget.fitContainer ||
+        oldWidget.internalPadding != widget.internalPadding) {
       
       if (kIsWeb && _viewId != null) {
         // For web, update the existing container element
@@ -245,10 +251,16 @@ class _VegaLiteWidgetState extends State<VegaLiteWidget> {
       print('Raw vega spec: ${widget.vegaSpec}');
     }
     
+    // Calculate padding values
+    final paddingTop = widget.internalPadding?.top ?? 16.0;
+    final paddingBottom = widget.internalPadding?.bottom ?? 16.0;
+    final paddingLeft = widget.internalPadding?.left ?? 0.0;
+    final paddingRight = widget.internalPadding?.right ?? 0.0;
+    
     // Build inline styles for the vega container
     final vegaStyles = widget.constrainHeight
-        ? 'width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; overflow: hidden; padding: 16px 0;'
-        : 'width: 100%; max-width: 100%; height: auto; display: flex; align-items: center; justify-content: center; padding: 16px 0;';
+        ? 'width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; overflow: hidden; padding: ${paddingTop}px ${paddingRight}px ${paddingBottom}px ${paddingLeft}px;'
+        : 'width: 100%; max-width: 100%; height: auto; display: flex; align-items: center; justify-content: center; padding: ${paddingTop}px ${paddingRight}px ${paddingBottom}px ${paddingLeft}px;';
     
     return '''
       <div id="vega-container-$_viewId" class="vega" style="background-color: ${widget.backgroundColor ?? 'transparent'}; $vegaStyles">
@@ -312,7 +324,7 @@ class _VegaLiteWidgetState extends State<VegaLiteWidget> {
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: 16px;
+            padding: ${widget.internalPadding?.top ?? 16}px ${widget.internalPadding?.right ?? 16}px ${widget.internalPadding?.bottom ?? 16}px ${widget.internalPadding?.left ?? 16}px;
             box-sizing: border-box;
             overflow: auto;
         }
@@ -325,19 +337,19 @@ class _VegaLiteWidgetState extends State<VegaLiteWidget> {
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: 16px 0;
+            padding: ${widget.internalPadding?.top ?? 16}px ${widget.internalPadding?.right ?? 0}px ${widget.internalPadding?.bottom ?? 16}px ${widget.internalPadding?.left ?? 0}px;
         }
         
         /* Fit to height mode: constrained sizing */
         .vega.fit-to-height {
             width: 100%;
-            height: calc(100% - 32px);
+            height: calc(100% - ${(widget.internalPadding?.top ?? 16) + (widget.internalPadding?.bottom ?? 16)}px);
             max-width: none;
             display: flex;
             align-items: center;
             justify-content: center;
             overflow: hidden;
-            padding: 16px 0;
+            padding: ${widget.internalPadding?.top ?? 16}px ${widget.internalPadding?.right ?? 0}px ${widget.internalPadding?.bottom ?? 16}px ${widget.internalPadding?.left ?? 0}px;
         }
         
         .vega svg {
@@ -393,14 +405,44 @@ class _VegaLiteWidgetState extends State<VegaLiteWidget> {
 
   @override
   Widget build(BuildContext context) {
-    final chartWidth = _getChartWidth();
+    // If fitContainer is true, wrap in LayoutBuilder to get parent constraints
+    if (widget.fitContainer) {
+      return LayoutBuilder(
+        builder: (context, constraints) {
+          // Use finite constraints, fallback to reasonable defaults
+          final availableWidth = constraints.maxWidth.isFinite 
+              ? constraints.maxWidth 
+              : (constraints.minWidth > 0 ? constraints.minWidth : 800.0);
+          final availableHeight = constraints.maxHeight.isFinite 
+              ? constraints.maxHeight 
+              : (constraints.minHeight > 0 ? constraints.minHeight : 400.0);
+          
+          return _buildWidget(
+            context,
+            width: availableWidth,
+            height: availableHeight,
+          );
+        },
+      );
+    }
+    
+    // Standard mode - use explicit dimensions
+    return _buildWidget(
+      context,
+      width: widget.cssWidth != null ? null : _getChartWidth(),
+      height: widget.maxHeight,
+    );
+  }
+  
+  Widget _buildWidget(BuildContext context, {double? width, double? height}) {
+    final chartWidth = width;
     
     // For web platform, use HtmlElementView with vega-embed
     if (kIsWeb) {
       return Container(
-        height: widget.maxHeight,
+        height: height,
         width: widget.cssWidth != null ? null : chartWidth, // Let HTML handle percentage widths
-        constraints: widget.maxHeight == null 
+        constraints: height == null && !widget.fitContainer
             ? const BoxConstraints(minHeight: 200, maxHeight: 600)
             : null,
         decoration: BoxDecoration(
@@ -423,7 +465,7 @@ class _VegaLiteWidgetState extends State<VegaLiteWidget> {
     
     // For mobile platforms, use WebView
     return Container(
-      height: widget.maxHeight ?? 400,
+      height: height ?? 400,
       width: widget.cssWidth != null ? null : chartWidth, // Let WebView handle percentage widths
       decoration: BoxDecoration(
         border: Border.all(color: Theme.of(context).colorScheme.outline),

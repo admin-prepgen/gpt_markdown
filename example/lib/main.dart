@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:convert';
 
 import 'package:desktop_drop/desktop_drop.dart';
 import 'package:flutter/material.dart';
@@ -647,7 +648,8 @@ Try toggling the **Fit to Height** checkbox for Mermaid diagrams to see the resp
   bool writingMod = true;
   bool selectable = false;
   bool useDollarSignsForLatex = false;
-  bool fitMermaidToHeight = false;
+  bool fitMermaidContainer = false;
+  bool fitVegaContainer = false;
 
   @override
   Widget build(BuildContext context) {
@@ -1004,21 +1006,21 @@ Try toggling the **Fit to Height** checkbox for Mermaid diagrams to see the resp
                                                 Row(
                                                   children: [
                                                     Checkbox(
-                                                      value: fitMermaidToHeight,
+                                                      value: fitMermaidContainer,
                                                       onChanged: (value) {
                                                         if (value != null) {
                                                           setState(() {
-                                                            fitMermaidToHeight = value;
+                                                            fitMermaidContainer = value;
                                                           });
                                                           // Also update the main state
                                                           this.setState(() {
-                                                            fitMermaidToHeight = value;
+                                                            fitMermaidContainer = value;
                                                           });
                                                         }
                                                       },
                                                     ),
                                                     Text(
-                                                      'Fit to height',
+                                                      'Fit to container',
                                                       style: Theme.of(context).textTheme.bodySmall,
                                                     ),
                                                   ],
@@ -1032,7 +1034,7 @@ Try toggling the **Fit to Height** checkbox for Mermaid diagrams to see the resp
                                                   theme: Theme.of(context).brightness == Brightness.dark 
                                                       ? MermaidTheme.dark 
                                                       : MermaidTheme.default_,
-                                                  fitToHeight: fitMermaidToHeight,
+                                                  fitContainer: fitMermaidContainer,
                                                 ),
                                               ],
                                             );
@@ -1040,52 +1042,62 @@ Try toggling the **Fit to Height** checkbox for Mermaid diagrams to see the resp
                                         );
                                       },
                                       vegaLiteBuilder: (context, spec, config) {
-                                        // Example different width configurations based on chart content
-                                        final specString = spec.toString();
+                                        // Better approach: Use Vega-Lite's responsive "container" width
+                                        String modifiedSpec = spec;
+                                        try {
+                                          final specJson = jsonDecode(spec) as Map<String, dynamic>;
+                                          // Set Vega-Lite to use container width for true responsiveness
+                                          specJson['width'] = 'container';
+                                          modifiedSpec = jsonEncode(specJson);
+                                        } catch (e) {
+                                          // If parsing fails, use original spec
+                                          modifiedSpec = spec;
+                                        }
 
-                                        // 50% width example for bar charts
-                                        if (specString.contains('"mark": "bar"')) {
-                                          return VegaLiteWidget(
-                                            vegaSpec: spec,
-                                            cssWidth: "50%",        // 50% width for bar charts
-                                            maxWidth: 600,          // Max 600px wide
-                                            maxHeight: 300,
-                                            backgroundColor: Theme.of(context).colorScheme.surface,
-                                            constrainHeight: false,
-                                          );
-                                        }
-                                        // 80% width example for line charts
-                                        else if (specString.contains('"mark": "line"')) {
-                                          return VegaLiteWidget(
-                                            vegaSpec: spec,
-                                            cssWidth: "80%",        // 80% width for line charts
-                                            maxWidth: 800,          // Max 800px wide
-                                            maxHeight: 300,
-                                            backgroundColor: Theme.of(context).colorScheme.surface,
-                                            constrainHeight: false,
-                                          );
-                                        }
-                                        // Fixed width example for other charts
-                                        else if (specString.contains('"mark": "circle"') || specString.contains('"mark": "point"')) {
-                                          return VegaLiteWidget(
-                                            vegaSpec: spec,
-                                            cssWidth: "400px",      // Fixed 400px width for scatter plots
-                                            maxHeight: 300,
-                                            backgroundColor: Theme.of(context).colorScheme.surface,
-                                            constrainHeight: false,
-                                          );
-                                        }
-                                        // Default responsive example
-                                        else {
-                                          return VegaLiteWidget(
-                                            vegaSpec: spec,
-                                            cssWidth: "100%",       // Full width for other charts
-                                            maxWidth: 800,          // But cap at 800px
-                                            maxHeight: 300,
-                                            backgroundColor: Theme.of(context).colorScheme.surface,
-                                            constrainHeight: false,
-                                          );
-                                        }
+                                        // Wrap in StatefulBuilder to allow interactive fitContainer toggle
+                                        return StatefulBuilder(
+                                          builder: (context, setState) {
+                                            return Column(
+                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              children: [
+                                                Row(
+                                                  children: [
+                                                    Checkbox(
+                                                      value: fitVegaContainer,
+                                                      onChanged: (value) {
+                                                        if (value != null) {
+                                                          setState(() {
+                                                            fitVegaContainer = value;
+                                                          });
+                                                          // Also update the main state
+                                                          this.setState(() {
+                                                            fitVegaContainer = value;
+                                                          });
+                                                        }
+                                                      },
+                                                    ),
+                                                    Text(
+                                                      'Fit to container',
+                                                      style: Theme.of(context).textTheme.bodySmall,
+                                                    ),
+                                                  ],
+                                                ),
+                                                const SizedBox(height: 8),
+                                                // Render Vega-Lite chart based on fitContainer state
+                                                if (fitVegaContainer)
+                                                  VegaLiteWidget(
+                                                    vegaSpec: modifiedSpec,
+                                                    fitContainer: true,
+                                                    internalPadding: const EdgeInsets.all(24.0),
+                                                    backgroundColor: Theme.of(context).colorScheme.surface,
+                                                    constrainHeight: false,
+                                                  )
+                                                else
+                                                  _buildVegaLiteDefault(context, spec, modifiedSpec),
+                                              ],
+                                            );
+                                          },
+                                        );
                                       },
                                     );
                                     if (selectable) {
@@ -1125,5 +1137,75 @@ Try toggling the **Fit to Height** checkbox for Mermaid diagrams to see the resp
         ),
       ),
     );
+  }
+
+  Widget _buildVegaLiteDefault(BuildContext context, String spec, String modifiedSpec) {
+    final specString = spec.toString();
+
+    // 50% width example for bar charts
+    if (specString.contains('"mark": "bar"')) {
+      return VegaLiteWidget(
+        vegaSpec: modifiedSpec,
+        cssWidth: "50%",
+        maxWidth: 600,
+        maxHeight: 300,
+        backgroundColor: Theme.of(context).colorScheme.surface,
+        constrainHeight: false,
+      );
+    }
+    // 80% width example for line charts
+    else if (specString.contains('"mark": "line"')) {
+      return VegaLiteWidget(
+        vegaSpec: modifiedSpec,
+        cssWidth: "80%",
+        maxWidth: 800,
+        maxHeight: 300,
+        backgroundColor: Theme.of(context).colorScheme.surface,
+        constrainHeight: false,
+      );
+    }
+    // Fixed width example for scatter plots
+    else if (specString.contains('"mark": "circle"') || specString.contains('"mark": "point"')) {
+      return VegaLiteWidget(
+        vegaSpec: modifiedSpec,
+        cssWidth: "400px",
+        maxHeight: 300,
+        backgroundColor: Theme.of(context).colorScheme.surface,
+        constrainHeight: false,
+      );
+    }
+    // Area charts with custom sizing
+    else if (specString.contains('"mark": "area"')) {
+      return VegaLiteWidget(
+        vegaSpec: modifiedSpec,
+        cssWidth: "100%",
+        maxWidth: 800,
+        maxHeight: 300,
+        backgroundColor: Theme.of(context).colorScheme.surface,
+        constrainHeight: false,
+      );
+    }
+    // Pie charts with custom sizing
+    else if (specString.contains('"mark": "arc"')) {
+      return VegaLiteWidget(
+        vegaSpec: modifiedSpec,
+        cssWidth: "100%",
+        maxWidth: 600,
+        maxHeight: 300,
+        backgroundColor: Theme.of(context).colorScheme.surface,
+        constrainHeight: false,
+      );
+    }
+    // Default responsive example
+    else {
+      return VegaLiteWidget(
+        vegaSpec: modifiedSpec,
+        cssWidth: "100%",
+        maxWidth: 800,
+        maxHeight: 300,
+        backgroundColor: Theme.of(context).colorScheme.surface,
+        constrainHeight: false,
+      );
+    }
   }
 }
