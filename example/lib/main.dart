@@ -648,8 +648,6 @@ Try toggling the **Fit to Height** checkbox for Mermaid diagrams to see the resp
   bool writingMod = true;
   bool selectable = false;
   bool useDollarSignsForLatex = false;
-  bool fitMermaidContainer = false;
-  bool fitVegaContainer = false;
 
   @override
   Widget build(BuildContext context) {
@@ -1003,29 +1001,6 @@ Try toggling the **Fit to Height** checkbox for Mermaid diagrams to see the resp
                                             return Column(
                                               crossAxisAlignment: CrossAxisAlignment.start,
                                               children: [
-                                                Row(
-                                                  children: [
-                                                    Checkbox(
-                                                      value: fitMermaidContainer,
-                                                      onChanged: (value) {
-                                                        if (value != null) {
-                                                          setState(() {
-                                                            fitMermaidContainer = value;
-                                                          });
-                                                          // Also update the main state
-                                                          this.setState(() {
-                                                            fitMermaidContainer = value;
-                                                          });
-                                                        }
-                                                      },
-                                                    ),
-                                                    Text(
-                                                      'Fit to container',
-                                                      style: Theme.of(context).textTheme.bodySmall,
-                                                    ),
-                                                  ],
-                                                ),
-                                                const SizedBox(height: 8),
                                                 MermaidWidget(
                                                   mermaidCode: code,
                                                   height: 400,
@@ -1034,7 +1009,6 @@ Try toggling the **Fit to Height** checkbox for Mermaid diagrams to see the resp
                                                   theme: Theme.of(context).brightness == Brightness.dark 
                                                       ? MermaidTheme.dark 
                                                       : MermaidTheme.default_,
-                                                  fitContainer: fitMermaidContainer,
                                                 ),
                                               ],
                                             );
@@ -1054,49 +1028,13 @@ Try toggling the **Fit to Height** checkbox for Mermaid diagrams to see the resp
                                           modifiedSpec = spec;
                                         }
 
-                                        // Wrap in StatefulBuilder to allow interactive fitContainer toggle
-                                        return StatefulBuilder(
-                                          builder: (context, setState) {
-                                            return Column(
-                                              crossAxisAlignment: CrossAxisAlignment.start,
-                                              children: [
-                                                Row(
-                                                  children: [
-                                                    Checkbox(
-                                                      value: fitVegaContainer,
-                                                      onChanged: (value) {
-                                                        if (value != null) {
-                                                          setState(() {
-                                                            fitVegaContainer = value;
-                                                          });
-                                                          // Also update the main state
-                                                          this.setState(() {
-                                                            fitVegaContainer = value;
-                                                          });
-                                                        }
-                                                      },
-                                                    ),
-                                                    Text(
-                                                      'Fit to container',
-                                                      style: Theme.of(context).textTheme.bodySmall,
-                                                    ),
-                                                  ],
-                                                ),
-                                                const SizedBox(height: 8),
-                                                // Render Vega-Lite chart based on fitContainer state
-                                                if (fitVegaContainer)
-                                                  VegaLiteWidget(
-                                                    vegaSpec: modifiedSpec,
-                                                    fitContainer: true,
-                                                    internalPadding: const EdgeInsets.all(24.0),
-                                                    backgroundColor: Theme.of(context).colorScheme.surface,
-                                                    constrainHeight: false,
-                                                  )
-                                                else
-                                                  _buildVegaLiteDefault(context, spec, modifiedSpec),
-                                              ],
-                                            );
-                                          },
+                                        // Vega-Lite chart with automatic responsive sizing
+                                        return VegaLiteWidget(
+                                          vegaSpec: modifiedSpec,
+                                          maxHeight: 400,
+                                          internalPadding: const EdgeInsets.all(24.0),
+                                          backgroundColor: Theme.of(context).colorScheme.surface,
+                                          constrainHeight: false,
                                         );
                                       },
                                     );

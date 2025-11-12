@@ -14,7 +14,6 @@ class VegaLiteWidget extends StatefulWidget {
     this.maxHeight,
     this.backgroundColor,
     this.constrainHeight = false,
-    this.fitContainer = false,
     this.internalPadding,
   });
 
@@ -24,7 +23,6 @@ class VegaLiteWidget extends StatefulWidget {
   final double? maxHeight;
   final Color? backgroundColor;
   final bool constrainHeight;
-  final bool fitContainer;
   final EdgeInsets? internalPadding;
 
   @override
@@ -52,7 +50,6 @@ class _VegaLiteWidgetState extends State<VegaLiteWidget> {
         oldWidget.maxHeight != widget.maxHeight ||
         oldWidget.backgroundColor != widget.backgroundColor ||
         oldWidget.constrainHeight != widget.constrainHeight ||
-        oldWidget.fitContainer != widget.fitContainer ||
         oldWidget.internalPadding != widget.internalPadding) {
       setState(() {
         _isLoading = true;
@@ -145,9 +142,38 @@ class _VegaLiteWidgetState extends State<VegaLiteWidget> {
     <script type="text/javascript">
         try {
             const spec = ${widget.vegaSpec};
+            
+            // Apply responsive defaults for container sizing
+            if (!spec.width) {
+              spec.width = "container";
+            }
+            if (!spec.height) {
+              spec.height = ${widget.maxHeight != null ? widget.maxHeight : '"container"'};
+            }
+            
+            // Ensure autosize is set for responsive behavior
+            if (!spec.autosize) {
+              spec.autosize = {
+                type: "fit",
+                resize: true,
+                contains: "padding"
+              };
+            }
+            
+            // Ensure proper padding for legends and axes visibility
+            if (!spec.padding) {
+              spec.padding = {
+                left: 20,
+                top: 20,
+                right: 20,
+                bottom: 20
+              };
+            }
+            
             vegaEmbed('#vis', spec, {
                 actions: false,
-                renderer: 'canvas'
+                renderer: 'canvas',
+                defaultStyle: true
             }).catch(function(error) {
                 console.error('Vega-Lite error:', error);
                 document.body.innerHTML = '<div class="error">Error rendering chart: ' + error.message + '</div>';
@@ -164,35 +190,16 @@ class _VegaLiteWidgetState extends State<VegaLiteWidget> {
 
   @override
   Widget build(BuildContext context) {
-    if (widget.fitContainer) {
-      return LayoutBuilder(
-        builder: (context, constraints) {
-          final availableWidth = constraints.maxWidth.isFinite 
-              ? constraints.maxWidth 
-              : (constraints.minWidth > 0 ? constraints.minWidth : 800.0);
-          final availableHeight = constraints.maxHeight.isFinite 
-              ? constraints.maxHeight 
-              : (constraints.minHeight > 0 ? constraints.minHeight : 400.0);
-          
-          return _buildWidget(
-            context,
-            width: availableWidth,
-            height: availableHeight,
-          );
-        },
-      );
-    }
-    
     return _buildWidget(context);
   }
   
-  Widget _buildWidget(BuildContext context, {double? width, double? height}) {
+  Widget _buildWidget(BuildContext context) {
     if (Platform.isLinux || Platform.isWindows || Platform.isMacOS) {
-      return _buildFallback(width: width, height: height);
+      return _buildFallback();
     }
     
-    final chartWidth = width ?? (widget.maxWidth ?? double.infinity);
-    final chartHeight = height ?? (widget.maxHeight ?? 400);
+    final chartWidth = widget.maxWidth;
+    final chartHeight = widget.maxHeight ?? 400;
     
     return Container(
       height: chartHeight,
@@ -265,9 +272,9 @@ class _VegaLiteWidgetState extends State<VegaLiteWidget> {
     );
   }
 
-  Widget _buildFallback({double? width, double? height}) {
-    final chartWidth = width ?? (widget.maxWidth ?? double.infinity);
-    final chartHeight = height ?? (widget.maxHeight ?? 400);
+  Widget _buildFallback() {
+    final chartWidth = widget.maxWidth;
+    final chartHeight = widget.maxHeight ?? 400;
     
     return Container(
       height: chartHeight,

@@ -20,7 +20,6 @@ class VegaLiteWidget extends StatefulWidget {
     this.maxHeight,
     this.backgroundColor,
     this.constrainHeight = false,
-    this.fitContainer = false,        // Auto-fit to parent container dimensions
     this.internalPadding,             // Internal padding for the chart
   });
 
@@ -30,7 +29,6 @@ class VegaLiteWidget extends StatefulWidget {
   final double? maxHeight;
   final Color? backgroundColor;
   final bool constrainHeight;
-  final bool fitContainer;     // When true, uses LayoutBuilder to get exact container size
   final EdgeInsets? internalPadding; // Internal padding for chart content
 
   @override
@@ -64,7 +62,6 @@ class _VegaLiteWidgetState extends State<VegaLiteWidget> {
         oldWidget.maxHeight != widget.maxHeight ||
         oldWidget.maxWidth != widget.maxWidth ||
         oldWidget.backgroundColor != widget.backgroundColor ||
-        oldWidget.fitContainer != widget.fitContainer ||
         oldWidget.internalPadding != widget.internalPadding) {
       
       if (kIsWeb && _viewId != null) {
@@ -177,6 +174,34 @@ class _VegaLiteWidgetState extends State<VegaLiteWidget> {
         if (typeof vegaEmbed !== 'undefined') {
           try {
             var spec = ${widget.vegaSpec};
+            
+            // Apply responsive defaults for container sizing
+            if (!spec.width) {
+              spec.width = "container";
+            }
+            if (!spec.height) {
+              spec.height = ${widget.maxHeight != null ? widget.maxHeight : '"container"'};
+            }
+            
+            // Ensure autosize is set for responsive behavior
+            if (!spec.autosize) {
+              spec.autosize = {
+                type: "fit",
+                resize: true,
+                contains: "padding"
+              };
+            }
+            
+            // Ensure proper padding for legends and axes visibility
+            if (!spec.padding) {
+              spec.padding = {
+                left: 20,
+                top: 20,
+                right: 20,
+                bottom: 20
+              };
+            }
+            
             var opts = {
               actions: {
                 export: false,
@@ -184,7 +209,8 @@ class _VegaLiteWidgetState extends State<VegaLiteWidget> {
                 source: false,
                 compiled: false
               },
-              hover: true
+              hover: true,
+              defaultStyle: true
               ${widget.constrainHeight ? ',downloadFileName: "chart.svg"' : ''}
             };
             vegaEmbed('#vega-container-$_viewId', spec, opts).catch(console.error);
@@ -383,6 +409,34 @@ class _VegaLiteWidgetState extends State<VegaLiteWidget> {
     <script>
         try {
             var spec = ${widget.vegaSpec};
+            
+            // Apply responsive defaults for container sizing
+            if (!spec.width) {
+              spec.width = "container";
+            }
+            if (!spec.height) {
+              spec.height = ${widget.maxHeight != null ? widget.maxHeight : '"container"'};
+            }
+            
+            // Ensure autosize is set for responsive behavior
+            if (!spec.autosize) {
+              spec.autosize = {
+                type: "fit",
+                resize: true,
+                contains: "padding"
+              };
+            }
+            
+            // Ensure proper padding for legends and axes visibility
+            if (!spec.padding) {
+              spec.padding = {
+                left: 20,
+                top: 20,
+                right: 20,
+                bottom: 20
+              };
+            }
+            
             var opts = {
               actions: {
                 export: false,
@@ -390,7 +444,8 @@ class _VegaLiteWidgetState extends State<VegaLiteWidget> {
                 source: false,
                 compiled: false
               },
-              hover: true
+              hover: true,
+              defaultStyle: true
             };
             vegaEmbed('#vega-chart', spec, opts).catch(console.error);
         } catch (error) {
@@ -405,28 +460,7 @@ class _VegaLiteWidgetState extends State<VegaLiteWidget> {
 
   @override
   Widget build(BuildContext context) {
-    // If fitContainer is true, wrap in LayoutBuilder to get parent constraints
-    if (widget.fitContainer) {
-      return LayoutBuilder(
-        builder: (context, constraints) {
-          // Use finite constraints, fallback to reasonable defaults
-          final availableWidth = constraints.maxWidth.isFinite 
-              ? constraints.maxWidth 
-              : (constraints.minWidth > 0 ? constraints.minWidth : 800.0);
-          final availableHeight = constraints.maxHeight.isFinite 
-              ? constraints.maxHeight 
-              : (constraints.minHeight > 0 ? constraints.minHeight : 400.0);
-          
-          return _buildWidget(
-            context,
-            width: availableWidth,
-            height: availableHeight,
-          );
-        },
-      );
-    }
-    
-    // Standard mode - use explicit dimensions
+    // Standard mode - use explicit dimensions or let Vega handle responsiveness
     return _buildWidget(
       context,
       width: widget.cssWidth != null ? null : _getChartWidth(),
@@ -442,7 +476,7 @@ class _VegaLiteWidgetState extends State<VegaLiteWidget> {
       return Container(
         height: height,
         width: widget.cssWidth != null ? null : chartWidth, // Let HTML handle percentage widths
-        constraints: height == null && !widget.fitContainer
+        constraints: height == null
             ? const BoxConstraints(minHeight: 200, maxHeight: 600)
             : null,
         decoration: BoxDecoration(
