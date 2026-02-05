@@ -185,9 +185,39 @@ class GptMarkdown extends StatelessWidget {
   //   );
   // }
 
+  /// Preprocesses text to fix common LaTeX formatting issues
+  String _preprocessLatexText(String text) {
+    String result = text;
+    
+    // Pattern to match isolated backslash-space-content-space-backslash sequences
+    // This matches: \ content \ where content is mathematical notation
+    final mainPattern = RegExp(r'\\ ([^\\]+?) \\(?!\()');
+    
+    result = result.replaceAllMapped(mainPattern, (match) {
+      final content = match.group(1)?.trim() ?? '';
+      // Skip if content is empty, just punctuation, or already processed
+      if (content.isEmpty || 
+          content == '=' || 
+          content.contains('\\(') || 
+          content.contains('\\)')) {
+        return match.group(0) ?? '';
+      }
+      
+      // Check if this looks like mathematical content
+      final mathPattern = RegExp(r'[a-zA-Z0-9+\-=^{}_\\\(\)≈~\s]+');
+      if (mathPattern.hasMatch(content)) {
+        return '\\($content\\)';
+      }
+      
+      return match.group(0) ?? '';
+    });
+    
+    return result;
+  }
+
   @override
   Widget build(BuildContext context) {
-    String tex = data.trim();
+    String tex = _preprocessLatexText(data.trim());
     if (useDollarSignsForLatex) {
       tex = tex.replaceAllMapped(
         RegExp(r"(?<!\\)\$\$(.*?)(?<!\\)\$\$", dotAll: true),

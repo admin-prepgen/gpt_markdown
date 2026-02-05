@@ -1,3 +1,11 @@
+## 1.2.1
+
+* 🔧 **FIX:** Added automatic LaTeX preprocessing to handle malformed LaTeX syntax
+* 🧮 Fixed rendering of mathematical formulas with escaped backslashes (e.g., `\ p \ p \` → `\(p\)`)
+* ✅ Enhanced Hardy-Weinberg equation and similar mathematical text rendering
+* 🧪 Added comprehensive unit tests for LaTeX preprocessing functionality
+* 📝 Improved mathematical notation display for AI-generated content
+
 ## 1.2.0
 
 * 📊 **NEW:** Added Mermaid diagram support with `MermaidBlockMd` component
