@@ -48,6 +48,13 @@ class _MermaidWidgetState extends State<MermaidWidget> {
   String? _error;
   String? _viewId;
 
+  // Web, non-fit only: after mermaid renders we measure the diagram's real
+  // height and size the widget to it, so a tall flowchart shows in full and the
+  // surrounding PAGE scrolls — instead of relying on an inner scroll inside the
+  // Flutter platform view (which is unreliable) or clipping the bottom.
+  web.HTMLDivElement? _containerEl;
+  double? _contentHeight;
+
   @override
   void initState() {
     super.initState();
@@ -109,17 +116,21 @@ class _MermaidWidgetState extends State<MermaidWidget> {
     final scriptCode = '''
       setTimeout(function() {
         if (typeof mermaid !== 'undefined') {
-          // Clear previous diagrams
-          mermaid.contentLoaded();
-          
-          mermaid.initialize({ 
+          mermaid.initialize({
             startOnLoad: false,
             theme: '${widget.theme}',
             securityLevel: 'loose',
             suppressErrorRendering: false,
+            // Top-level htmlLabels:false forces native SVG <text> labels. Mermaid
+            // v11 IGNORES flowchart.htmlLabels:false and keeps using HTML
+            // foreignObject labels, whose width it measures with its own font —
+            // when the host app's font (e.g. Poppins) renders wider, the label
+            // overflows and is clipped. SVG <text> is measured and drawn as the
+            // same element, so it never mismatches or clips.
+            htmlLabels: false,
             flowchart: {
-              useMaxWidth: true,
-              htmlLabels: true,
+              useMaxWidth: ${widget.fitContainer ? 'true' : 'false'},
+              htmlLabels: false,
               ${widget.fitContainer ? 'useMaxHeight: true,' : ''}
               curve: 'basis'
             },
@@ -140,17 +151,24 @@ class _MermaidWidgetState extends State<MermaidWidget> {
             }
           });
           try {
-            mermaid.run().then(function() {
-              // Optimize SVG sizing after render
-              var svg = document.querySelector('[id*="mermaid-diagram"] svg');
+            // Render ONLY this view's diagram (scope to its id) so concurrent
+            // diagrams don't interfere with each other.
+            var node = document.querySelector('#mermaid-diagram-$_viewId');
+            var runOpts = node ? { nodes: [node] } : undefined;
+            mermaid.run(runOpts).then(function() {
+              // Safari-safe sizing: cap the SVG to the container but do NOT force
+              // width/height:auto or object-fit — on WebKit that collapses an
+              // inline SVG inside a flexbox to zero size (the "renders then whites
+              // out" bug). Keep mermaid's own width:100% + viewBox aspect ratio.
+              var svg = document.querySelector('#mermaid-diagram-$_viewId svg');
               if (svg) {
-                if (${widget.fitContainer.toString()}) {
-                  svg.style.maxWidth = '100%';
-                  svg.style.maxHeight = '100%';
-                  svg.style.width = 'auto';
-                  svg.style.height = 'auto';
-                  svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
-                }
+                svg.style.removeProperty('object-fit');
+                // Only fit-mode caps the SVG to the container. In non-fit mode we
+                // keep the SVG at its natural size and let the container scroll, so
+                // resizing the panel changes the viewport instead of zooming the
+                // diagram (which ballooned + clipped the labels).
+                ${widget.fitContainer ? "svg.style.maxWidth = '100%'; svg.style.maxHeight = '100%';" : ''}
+                svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
               }
             }).catch(function(error) {
               console.error('Mermaid render error:', error);
@@ -188,10 +206,13 @@ class _MermaidWidgetState extends State<MermaidWidget> {
 
   web.HTMLDivElement _createHtmlElement() {
     final container = web.document.createElement('div') as web.HTMLDivElement;
+    _containerEl = container;
     container.id = _viewId!;
-    container.style.width = widget.fitContainer ? '100%' : (widget.width != null ? '${widget.width}px' : '100%');
-    container.style.height = widget.fitContainer ? '100%' : (widget.height != null ? '${widget.height}px' : 'auto');
-    container.style.minHeight = widget.fitContainer ? '100%' : (widget.height != null ? '${widget.height}px' : '200px');
+    // Non-fit fills the Flutter-provided height (which we grow to the measured
+    // diagram height); horizontal scroll only if the diagram is wider than the
+    // panel. Fit mode keeps its own 100%/hidden behaviour.
+    container.style.width = '100%';
+    container.style.height = '100%';
     container.style.overflow = widget.fitContainer ? 'hidden' : 'auto';
     container.style.position = 'relative';
     container.style.border = '1px solid #ccc';
@@ -216,14 +237,40 @@ class _MermaidWidgetState extends State<MermaidWidget> {
       
       // Run initialization script
       _initializeMermaidDiagram();
+      // Measure the rendered diagram and size the widget to it (non-fit).
+      if (!widget.fitContainer) {
+        _scheduleAutoHeight();
+      }
     }).catchError((error) {
       if (kDebugMode) {
         print('Error loading Mermaid: $error');
       }
       container.innerText = 'Error loading Mermaid: $error';
     });
-    
+
     return container;
+  }
+
+  /// Poll the rendered SVG height a few times (mermaid renders asynchronously,
+  /// ~100ms after init) and grow the widget to fit, so the whole diagram is
+  /// visible and the page scrolls rather than the diagram clipping or depending
+  /// on an inner platform-view scroll.
+  void _scheduleAutoHeight() {
+    if (!kIsWeb) return;
+    for (final ms in const [250, 500, 1000, 1800]) {
+      Future<void>.delayed(Duration(milliseconds: ms), () {
+        if (!mounted || _containerEl == null) return;
+        final svg = _containerEl!.querySelector('svg');
+        if (svg == null) return;
+        final h = svg.getBoundingClientRect().height;
+        if (h <= 0) return;
+        // add the div's vertical padding so nothing is trimmed
+        final target = h + 24;
+        if (_contentHeight == null || (_contentHeight! - target).abs() > 2) {
+          setState(() => _contentHeight = target);
+        }
+      });
+    }
   }
 
   Future<void> _ensureMermaidLoaded() async {
@@ -272,16 +319,18 @@ class _MermaidWidgetState extends State<MermaidWidget> {
     final paddingLeft = widget.internalPadding?.left ?? (widget.fitContainer ? 16.0 : 0.0);
     final paddingRight = widget.internalPadding?.right ?? (widget.fitContainer ? 16.0 : 0.0);
     
-    // Build inline styles for the mermaid div
+    // Build inline styles for the mermaid div.
+    // Fit mode: fill + center the container. Non-fit: size to the diagram's
+    // natural width (max-content) so the parent container can scroll it, instead
+    // of squeezing/zooming it to the container width.
     final mermaidStyles = widget.fitContainer
         ? 'width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; overflow: hidden; padding: ${paddingTop}px ${paddingRight}px ${paddingBottom}px ${paddingLeft}px;'
-        : 'width: auto; max-width: 100%; height: auto; display: flex; align-items: center; justify-content: center; padding: ${paddingTop}px ${paddingRight}px ${paddingBottom}px ${paddingLeft}px;';
-    
+        : 'display: inline-block; width: max-content; height: auto; padding: ${paddingTop}px ${paddingRight}px ${paddingBottom}px ${paddingLeft}px;';
+
     return '''
       <style>
-        .mermaid svg {
-          max-width: 100%;
-          ${widget.fitContainer ? 'max-height: 100%; width: auto; height: auto; object-fit: contain;' : 'height: auto;'}
+        #mermaid-diagram-$_viewId svg {
+          ${widget.fitContainer ? 'max-width: 100%; height: auto; max-height: 100%;' : 'height: auto;'}
         }
       </style>
       <div id="mermaid-diagram-$_viewId" class="mermaid" style="background-color: ${widget.backgroundColor ?? 'transparent'}; $mermaidStyles">
@@ -425,10 +474,13 @@ ${widget.mermaidCode}
                 theme: '$themeConfig',
                 securityLevel: 'loose',
                 suppressErrorRendering: false,
-                fontFamily: 'inherit',
+                // Top-level htmlLabels:false => native SVG <text> labels (v11
+                // ignores flowchart.htmlLabels:false). Avoids foreignObject label
+                // clipping from host-font width mismatch.
+                htmlLabels: false,
                 flowchart: {
                     useMaxWidth: true,
-                    htmlLabels: true,
+                    htmlLabels: false,
                     ${widget.fitContainer ? 'useMaxHeight: true,' : ''}
                     curve: 'basis'
                 },
@@ -519,10 +571,15 @@ ${widget.mermaidCode}
   Widget _buildWidget(BuildContext context, {double? width, double? height}) {
     // For web platform, use HtmlElementView with Mermaid.js
     if (kIsWeb) {
+      // Non-fit: prefer an explicit height, else the measured diagram height.
+      // Until the first measurement arrives we fall back to a bounded, scrollable
+      // starter box so nothing overflows unbounded.
+      final double? effectiveHeight =
+          widget.fitContainer ? height : (height ?? _contentHeight);
       return Container(
-        height: height,
+        height: effectiveHeight,
         width: width,
-        constraints: height == null && !widget.fitContainer
+        constraints: effectiveHeight == null && !widget.fitContainer
             ? const BoxConstraints(minHeight: 200, maxHeight: 600)
             : null,
         decoration: BoxDecoration(
