@@ -190,8 +190,15 @@ class GptMarkdown extends StatelessWidget {
     String result = text;
     
     // Pattern to match isolated backslash-space-content-space-backslash sequences
-    // This matches: \ content \ where content is mathematical notation
-    final mainPattern = RegExp(r'\\ ([^\\]+?) \\(?!\()');
+    // This matches: \ content \ where content is mathematical notation.
+    //
+    // Guards so this repair does NOT corrupt real LaTeX environments (e.g.
+    // matrices), where `\\` is a row separator and `\begin`/`\end` are commands:
+    //   (?<!\\)      opening `\` must not be the 2nd half of a `\\` row separator
+    //   (?![a-zA-Z(] closing `\` must not begin a command like `\end`/`\begin`
+    // Without these, `... 1 & 1 \\ 12 & 8 \end{bmatrix}` was mis-rewritten to
+    // `... 1 & 1 \\(12 & 8\)end{bmatrix}`, breaking the matrix.
+    final mainPattern = RegExp(r'(?<!\\)\\ ([^\\]+?) \\(?![a-zA-Z(])');
     
     result = result.replaceAllMapped(mainPattern, (match) {
       final content = match.group(1)?.trim() ?? '';
