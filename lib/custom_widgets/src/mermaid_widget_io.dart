@@ -165,11 +165,12 @@ class _MermaidWidgetState extends State<MermaidWidget> {
         }
         
         .mermaid.fit-container svg {
+            /* iOS WKWebView is WebKit: width/height:auto + object-fit:contain in a
+               flex container collapse an inline SVG to zero size (blank diagram),
+               the same bug as Safari on web. Cap with max-* only and let mermaid's
+               width:100% + viewBox drive the aspect ratio. */
             max-width: 100%;
             max-height: 100%;
-            width: auto;
-            height: auto;
-            object-fit: contain;
         }
         
         .error {
