@@ -224,7 +224,10 @@ class GptMarkdown extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    String tex = _preprocessLatexText(data.trim());
+    // Upstream normalizes line endings; we then run our LaTeX repair on top.
+    String tex = _preprocessLatexText(
+      data.replaceAll('\r\n', '\n').replaceAll('\r', '\n').trim(),
+    );
     if (useDollarSignsForLatex) {
       tex = tex.replaceAllMapped(
         RegExp(r"(?<!\\)\$\$(.*?)(?<!\\)\$\$", dotAll: true),

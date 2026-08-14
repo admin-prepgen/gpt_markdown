@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:gpt_markdown/custom_widgets/bidi_rich_text.dart';
 import 'package:gpt_markdown/gpt_markdown.dart';
 
 /// A builder function for the ordered list.
@@ -63,7 +64,16 @@ typedef HighlightBuilder =
     Widget Function(BuildContext context, String text, TextStyle style);
 
 /// A builder function for the image.
-typedef ImageBuilder = Widget Function(BuildContext context, String imageUrl);
+///
+/// [width] and [height] come from the image alt text when parsed as `WxH`
+/// (for example `![100x200](url)`); otherwise they are null.
+typedef ImageBuilder =
+    Widget Function(
+      BuildContext context,
+      String imageUrl,
+      double? width,
+      double? height,
+    );
 
 /// A builder function for Mermaid diagrams.
 typedef MermaidBuilder =
@@ -255,7 +265,23 @@ class GptMarkdownConfig {
   }
 
   /// A method to get a rich text widget from an inline span.
-  Text getRich(InlineSpan span) {
+  ///
+  /// Paragraphs that mix right-to-left text with two or more inline widgets
+  /// (LaTeX, images, links) are rendered with [BidiText], which works around
+  /// https://github.com/flutter/flutter/issues/54400 — the engine otherwise
+  /// lays those inline widgets out left to right and they come out reversed.
+  /// Everything else keeps using a plain [Text].
+  Widget getRich(InlineSpan span) {
+    if (needsBidiPlaceholderFix(span)) {
+      return BidiText(
+        span,
+        textDirection: textDirection,
+        textScaler: textScaler,
+        textAlign: textAlign,
+        maxLines: maxLines,
+        overflow: overflow,
+      );
+    }
     return Text.rich(
       span,
       textDirection: textDirection,

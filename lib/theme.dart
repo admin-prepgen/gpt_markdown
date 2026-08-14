@@ -12,8 +12,10 @@ class GptMarkdownThemeData extends ThemeExtension<GptMarkdownThemeData> {
     required this.h6,
     required this.hrLineThickness,
     required this.hrLineColor,
+    required this.hrLinePadding,
     required this.linkColor,
     required this.linkHoverColor,
+    required this.autoAddDividerLineAfterH1,
   });
 
   /// A factory constructor for `GptMarkdownThemeData`.
@@ -28,8 +30,10 @@ class GptMarkdownThemeData extends ThemeExtension<GptMarkdownThemeData> {
     TextStyle? h6,
     double? hrLineThickness,
     Color? hrLineColor,
+    EdgeInsets? hrLinePadding,
     Color? linkColor,
     Color? linkHoverColor,
+    bool? autoAddDividerLineAfterH1,
   }) {
     ThemeData themeData = switch (brightness) {
       Brightness.light => ThemeData.light(),
@@ -66,8 +70,10 @@ class GptMarkdownThemeData extends ThemeExtension<GptMarkdownThemeData> {
       h6: h6,
       hrLineThickness: hrLineThickness,
       hrLineColor: hrLineColor,
+      hrLinePadding: hrLinePadding,
       linkColor: linkColor,
       linkHoverColor: linkHoverColor,
+      autoAddDividerLineAfterH1: autoAddDividerLineAfterH1,
     );
   }
 
@@ -85,8 +91,10 @@ class GptMarkdownThemeData extends ThemeExtension<GptMarkdownThemeData> {
       h6: textTheme.titleSmall,
       hrLineThickness: 1,
       hrLineColor: theme.colorScheme.outline,
+      hrLinePadding: EdgeInsets.zero,
       linkColor: Colors.blue,
       linkHoverColor: Colors.red,
+      autoAddDividerLineAfterH1: true,
     );
   }
 
@@ -115,11 +123,17 @@ class GptMarkdownThemeData extends ThemeExtension<GptMarkdownThemeData> {
   /// The color of the horizontal line.
   Color hrLineColor;
 
+  /// Padding around horizontal rules and the h1 follow-up divider line.
+  EdgeInsets hrLinePadding;
+
   /// The color of the link.
   Color linkColor;
 
   /// The color of the link when hovering.
   Color linkHoverColor;
+
+  /// Whether to insert a horizontal divider after `#` (h1) headings.
+  bool autoAddDividerLineAfterH1;
 
   /// A method to copy the `GptMarkdownThemeData`.
   @override
@@ -133,8 +147,10 @@ class GptMarkdownThemeData extends ThemeExtension<GptMarkdownThemeData> {
     TextStyle? h6,
     double? hrLineThickness,
     Color? hrLineColor,
+    EdgeInsets? hrLinePadding,
     Color? linkColor,
     Color? linkHoverColor,
+    bool? autoAddDividerLineAfterH1,
   }) {
     return GptMarkdownThemeData._(
       highlightColor: highlightColor ?? this.highlightColor,
@@ -146,9 +162,29 @@ class GptMarkdownThemeData extends ThemeExtension<GptMarkdownThemeData> {
       h6: h6 ?? this.h6,
       hrLineThickness: hrLineThickness ?? this.hrLineThickness,
       hrLineColor: hrLineColor ?? this.hrLineColor,
+      hrLinePadding: hrLinePadding ?? this.hrLinePadding,
       linkColor: linkColor ?? this.linkColor,
       linkHoverColor: linkHoverColor ?? this.linkHoverColor,
+      autoAddDividerLineAfterH1:
+          autoAddDividerLineAfterH1 ?? this.autoAddDividerLineAfterH1,
     );
+  }
+
+  /// Whether every field matches [other].
+  bool isSame(GptMarkdownThemeData other) {
+    return highlightColor == other.highlightColor &&
+        h1 == other.h1 &&
+        h2 == other.h2 &&
+        h3 == other.h3 &&
+        h4 == other.h4 &&
+        h5 == other.h5 &&
+        h6 == other.h6 &&
+        hrLineThickness == other.hrLineThickness &&
+        hrLineColor == other.hrLineColor &&
+        hrLinePadding == other.hrLinePadding &&
+        linkColor == other.linkColor &&
+        linkHoverColor == other.linkHoverColor &&
+        autoAddDividerLineAfterH1 == other.autoAddDividerLineAfterH1;
   }
 
   @override
@@ -170,9 +206,14 @@ class GptMarkdownThemeData extends ThemeExtension<GptMarkdownThemeData> {
         end: other.hrLineThickness,
       ).transform(t),
       hrLineColor: Color.lerp(hrLineColor, other.hrLineColor, t) ?? hrLineColor,
+      hrLinePadding:
+          EdgeInsets.lerp(hrLinePadding, other.hrLinePadding, t) ??
+          hrLinePadding,
       linkColor: Color.lerp(linkColor, other.linkColor, t) ?? linkColor,
       linkHoverColor:
           Color.lerp(linkHoverColor, other.linkHoverColor, t) ?? linkHoverColor,
+      autoAddDividerLineAfterH1:
+          t < 0.5 ? autoAddDividerLineAfterH1 : other.autoAddDividerLineAfterH1,
     );
   }
 }

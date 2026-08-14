@@ -1,11 +1,13 @@
 name: gpt_markdown
 description: "Powerful Flutter Markdown & LaTeX Renderer: Rich Text, Math, Tables, Links, and Text Selection. Ideal for ChatGPT, Gemini, and more."
-version: 1.2.3
-homepage: https://github.com/Infinitix-LLC/gpt_markdown
+version: 1.2.4
+homepage: https://gptmarkdown.com
+repository: https://github.com/Infinitix-LLC/gpt_markdown
+issue_tracker: https://github.com/Infinitix-LLC/gpt_markdown/issues
 
 environment:
   sdk: '>=3.7.0 <4.0.0'
-  flutter: ">=3.35.0"
+  flutter: ">=3.0.0"
 
 dependencies:
   flutter:
@@ -32,12 +34,3 @@ topics:
   - chatgpt
   - gemini
 
-keywords:
-  - flutter
-  - markdown
-  - flutter markdown
-  - gpt
-  - latex
-  - chatgpt
-  - rich text
-  - ai

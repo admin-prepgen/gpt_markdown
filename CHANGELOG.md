@@ -1,20 +1,34 @@
-## 1.2.1
+## Unreleased
 
-* 🔧 **FIX:** Added automatic LaTeX preprocessing to handle malformed LaTeX syntax
-* 🧮 Fixed rendering of mathematical formulas with escaped backslashes (e.g., `\ p \ p \` → `\(p\)`)
-* ✅ Enhanced Hardy-Weinberg equation and similar mathematical text rendering
-* 🧪 Added comprehensive unit tests for LaTeX preprocessing functionality
-* 📝 Improved mathematical notation display for AI-generated content
+* 🔡 Fixed inline widgets (LaTeX, images, links) rendering in reverse order when a paragraph mixes right-to-left text with two or more of them — e.g. `واحد $two^2$ ثلاثة أربعة five ستة سبعة $eight^8$` used to swap the two formulas. This works around [flutter/flutter#54400](https://github.com/flutter/flutter/issues/54400), where the engine fills a line's inline-placeholder slots left to right in logical order regardless of the line's direction. Affected paragraphs now render through `BidiText`, which computes the correct visual order per line with the Unicode bidi reordering rule (UAX #9, L2); everything else keeps using a plain `Text`.
+* `GptMarkdownConfig.getRich` now returns `Widget` instead of `Text`.
 
-## 1.2.0
+## 1.1.8
 
-* 📊 **NEW:** Added Mermaid diagram support with `MermaidBlockMd` component
-* 🛠️ Added `MermaidBuilder` typedef for custom Mermaid rendering
-* 🌐 Included `MermaidWidget` using WebView for interactive diagram rendering
-* 🎨 Support for multiple Mermaid themes (default, dark, forest, neutral, base)
-* 📱 Cross-platform support with fallback rendering for unsupported platforms
-* 🔧 Added `mermaidBuilder` parameter to `GptMarkdownConfig` and `GptMarkdown`
-* 📚 Updated documentation and examples to showcase Mermaid functionality
+* 🔗 Fixed consecutive links separated by single newlines not rendering ([#142](https://github.com/Infinitix-LLC/gpt_markdown/issues/142)).
+
+## 1.1.7
+
+* Added/updated the interactive playground and pub.dev example flow, with `playground.dart` as a dedicated playground entry and improved demo content for links, lists, blockquotes, tables, and LaTeX.
+* Updated package metadata: bumped to `1.1.7`, set `homepage` to [gptmarkdown.com](https://gptmarkdown.com), and added `repository` + `issue_tracker`.
+* Bumped `flutter_math_fork` to `^0.7.4` for Flutter 3.35+ compatibility.
+* Fixed bold markdown rendering across newlines by enabling `dotAll` in `BoldMd`.
+* Fixed link styling so underline/color (including hover color) apply consistently across nested inline spans (bold/italic) inside links via `LinkSpanBuilder`.
+* Extended `imageBuilder` to receive parsed size metadata from markdown image syntax (`context, imageUrl, width, height`).
+* Resolved deprecated radio API usage by wrapping `Radio<bool>` with `RadioGroup` in custom radio rendering.
+* Cleaned up and corrected docs/example markdown content for the updated API and examples.
+
+## 1.1.6
+
+* Added `hrLinePadding` to `GptMarkdownThemeData` (default `EdgeInsets.zero`), wired through the public factory, `copyWith`, and `lerp`, for padding around horizontal rules and the optional line after `#` headings.
+* Added `autoAddDividerLineAfterH1` to `GptMarkdownThemeData` (default `true`), with the same factory / `copyWith` / `lerp` support, so the extra divider after a level-1 heading can be toggled from theme data.
+* Added `padding` to `CustomDivider` (default `EdgeInsets.zero`); the render object lays out and paints the stroke inside those insets and uses the constrained width when drawing.
+* Added `GptMarkdownThemeData.isSame` to compare every field on the theme data type.
+* `HTag` and `HrLine` use `hrLineColor`, `hrLinePadding`, and `autoAddDividerLineAfterH1` from `GptMarkdownTheme.of(context)` for the horizontal line widgets.
+
+## 1.1.5
+
+* Fixed block latex markdown syntax.
 
 ## 1.1.4
 
