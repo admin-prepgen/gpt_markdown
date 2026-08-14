@@ -128,6 +128,13 @@ class _MermaidWidgetState extends State<MermaidWidget> {
             // overflows and is clipped. SVG <text> is measured and drawn as the
             // same element, so it never mismatches or clips.
             htmlLabels: false,
+            // Larger, more legible text in the small diagram viewport.
+            themeVariables: {
+              fontSize: '18px',
+              pieTitleTextSize: '24px',
+              pieSectionTextSize: '19px',
+              pieLegendTextSize: '17px'
+            },
             flowchart: {
               useMaxWidth: ${widget.fitContainer ? 'true' : 'false'},
               htmlLabels: false,
@@ -478,6 +485,13 @@ ${widget.mermaidCode}
                 // ignores flowchart.htmlLabels:false). Avoids foreignObject label
                 // clipping from host-font width mismatch.
                 htmlLabels: false,
+                // Larger, more legible text in the small diagram viewport.
+                themeVariables: {
+                    fontSize: '18px',
+                    pieTitleTextSize: '24px',
+                    pieSectionTextSize: '19px',
+                    pieLegendTextSize: '17px'
+                },
                 flowchart: {
                     useMaxWidth: true,
                     htmlLabels: false,

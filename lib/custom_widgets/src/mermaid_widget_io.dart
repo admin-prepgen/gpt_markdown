@@ -199,6 +199,13 @@ class _MermaidWidgetState extends State<MermaidWidget> {
                 // Native SVG <text> labels (top-level; mermaid v11 ignores
                 // flowchart.htmlLabels:false) — avoids foreignObject label clipping.
                 htmlLabels: false,
+                // Larger, more legible text in the small diagram viewport.
+                themeVariables: {
+                    fontSize: '18px',
+                    pieTitleTextSize: '24px',
+                    pieSectionTextSize: '19px',
+                    pieLegendTextSize: '17px'
+                },
                 flowchart: {
                     useMaxWidth: true,
                     htmlLabels: false,
