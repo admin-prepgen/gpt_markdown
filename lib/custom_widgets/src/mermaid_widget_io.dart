@@ -77,7 +77,11 @@ class _MermaidWidgetState extends State<MermaidWidget> {
           },
         ),
       )
-      ..loadHtmlString(_generateHtml());
+      // baseUrl gives the document a real https origin. Without it, iOS
+      // WKWebView loads the HTML with a null origin and BLOCKS the external
+      // mermaid.js CDN <script>, so the diagram renders blank (Android's WebView
+      // is permissive, hence it worked there but not on iOS).
+      ..loadHtmlString(_generateHtml(), baseUrl: 'https://cdn.jsdelivr.net');
   }
 
   String _generateHtml() {
@@ -191,10 +195,12 @@ class _MermaidWidgetState extends State<MermaidWidget> {
                 theme: '$themeConfig',
                 securityLevel: 'loose',
                 suppressErrorRendering: false,
-                fontFamily: 'inherit',
+                // Native SVG <text> labels (top-level; mermaid v11 ignores
+                // flowchart.htmlLabels:false) — avoids foreignObject label clipping.
+                htmlLabels: false,
                 flowchart: {
                     useMaxWidth: true,
-                    htmlLabels: true,
+                    htmlLabels: false,
                     ${widget.fitContainer ? 'useMaxHeight: true,' : ''}
                     curve: 'basis'
                 },
