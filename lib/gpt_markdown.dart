@@ -238,8 +238,11 @@ class GptMarkdown extends StatelessWidget {
           RegExp(r"(?<!\\)\$(.*?)(?<!\\)\$"),
           (match) => "\\(${match[1] ?? ""}\\)",
         );
+        // Leave escaped dollars alone only inside the LaTeX this pass just made,
+        // \( ... \) and \[ ... \]. Plain "( )" and "[ ]" are prose: matching
+        // them kept "\$5" in "(about \$5 a week)" with its backslash showing.
         tex = tex.splitMapJoin(
-          RegExp(r"\[.*?\]|\(.*?\)"),
+          RegExp(r"\\\[.*?\\\]|\\\(.*?\\\)"),
           onNonMatch: (p0) {
             return p0.replaceAll("\\\$", "\$");
           },
