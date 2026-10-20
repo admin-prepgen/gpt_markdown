@@ -10,6 +10,8 @@ import 'package:webview_flutter/webview_flutter.dart';
 import 'dart:ui_web' as ui_web;
 import 'package:web/web.dart' as web;
 
+import 'render_when_attached.dart';
+
 /// A widget that renders Vega-Lite specifications using vega-embed
 class VegaLiteWidget extends StatefulWidget {
   const VegaLiteWidget({
@@ -40,6 +42,13 @@ class _VegaLiteWidgetState extends State<VegaLiteWidget> {
   bool _isLoading = true;
   String? _error;
   String? _viewId;
+  web.HTMLDivElement? _containerEl;
+  RenderWhenAttached? _renderer;
+
+  // Unique per widget: a millisecond timestamp alone collides when several
+  // charts are built in the same frame, and the second factory registration
+  // is then ignored.
+  static int _nextViewSerial = 0;
 
   @override
   void initState() {
@@ -78,30 +87,29 @@ class _VegaLiteWidgetState extends State<VegaLiteWidget> {
     }
   }
 
+  @override
+  void dispose() {
+    _renderer?.cancel();
+    super.dispose();
+  }
+
   void _updateWebElement() {
     if (!kIsWeb || _viewId == null) return;
     
-    // Find the existing container and update its CSS
-    final container = web.document.querySelector('#$_viewId') as web.HTMLDivElement?;
+    final container = _containerEl;
     if (container != null) {
       // Update overflow style based on constrainHeight
       container.style.overflow = widget.constrainHeight ? 'hidden' : 'auto';
       
       // Re-render the chart
-      _ensureVegaLoaded().then((_) {
-        final html = _generateWebHtml();
-        container.innerHTML = html.toJS;
-        
-        // Re-initialize vega with new config
-        _initializeVegaChart();
-      });
+      _scheduleRender(container);
     }
   }
 
   void _registerWebView() {
     if (!kIsWeb) return;
     
-    _viewId = 'vega-${DateTime.now().millisecondsSinceEpoch}';
+    _viewId = 'vega-${DateTime.now().millisecondsSinceEpoch}-${_nextViewSerial++}';
     
     if (kDebugMode) {
       print('Registering Vega-Lite view with ID: $_viewId');
@@ -125,6 +133,7 @@ class _VegaLiteWidgetState extends State<VegaLiteWidget> {
     final effectiveHeight = widget.maxHeight;
     
     final container = web.document.createElement('div') as web.HTMLDivElement;
+    _containerEl = container;
     container.id = _viewId!;
     container.style.width = widget.cssWidth ?? (chartWidth != null ? '${chartWidth}px' : '100%');
     container.style.height = effectiveHeight != null ? '${effectiveHeight}px' : 'auto';
@@ -139,28 +148,39 @@ class _VegaLiteWidgetState extends State<VegaLiteWidget> {
       print('Vega spec preview: ${widget.vegaSpec.substring(0, widget.vegaSpec.length > 50 ? 50 : widget.vegaSpec.length)}...');
     }
     
-    // Load Vega.js and render the chart
-    _ensureVegaLoaded().then((_) {
-      if (kDebugMode) {
-        print('Vega-Lite loaded, generating HTML...');
-      }
-      final html = _generateWebHtml();
-      container.innerHTML = html.toJS;
-      
-      if (kDebugMode) {
-        print('HTML set, executing JavaScript...');
-      }
-      
-      // Run initialization script
-      _initializeVegaChart();
-    }).catchError((error) {
-      if (kDebugMode) {
-        print('Error loading Vega-Lite: $error');
-      }
-      container.innerText = 'Error loading Vega-Lite: $error';
-    });
+    // Load Vega.js and render the chart once the element is in the page
+    _scheduleRender(container);
     
     return container;
+  }
+
+  /// Renders into [container] once Flutter has attached it to the document.
+  /// Replaces any render still pending for this widget.
+  void _scheduleRender(web.HTMLDivElement container) {
+    _renderer?.cancel();
+    final renderer = _renderer =
+        RenderWhenAttached(container, () => _renderChart(container));
+    renderer.run().then((ok) {
+      if (ok || !identical(_renderer, renderer) || !mounted) return;
+      container.innerText = 'Error rendering Vega-Lite chart';
+    });
+  }
+
+  Future<void> _renderChart(web.HTMLDivElement container) async {
+    await _ensureVegaLoaded();
+    if (kDebugMode) {
+      print('Vega-Lite loaded, generating HTML...');
+    }
+    container.innerHTML = _generateWebHtml().toJS;
+    final target = container.querySelector('#vega-container-$_viewId')!;
+    // Embed by element reference, not by selector: the element is ours, and a
+    // document lookup is what failed when it was not attached yet.
+    final embed = web.window.callMethod<JSFunction>(
+      'eval'.toJS,
+      _embedFunctionSource().toJS,
+    );
+    final result = embed.callAsFunction(null, target) as JSPromise<JSAny?>;
+    await result.toDart;
   }
 
   /// Calculate effective width based on maxWidth constraint
@@ -168,63 +188,57 @@ class _VegaLiteWidgetState extends State<VegaLiteWidget> {
     return widget.maxWidth; // Will be null to default to 100% if not specified
   }
 
-  void _initializeVegaChart() {
-    final scriptCode = '''
-      setTimeout(function() {
-        if (typeof vegaEmbed !== 'undefined') {
-          try {
-            var spec = ${widget.vegaSpec};
-            
-            // Apply responsive defaults for container sizing
-            if (!spec.width) {
-              spec.width = "container";
-            }
-            if (!spec.height) {
-              spec.height = ${widget.maxHeight != null ? widget.maxHeight : '"container"'};
-            }
-            
-            // Ensure autosize is set for responsive behavior
-            if (!spec.autosize) {
-              spec.autosize = {
-                type: "fit",
-                resize: true,
-                contains: "padding"
-              };
-            }
-            
-            // Ensure proper padding for legends and axes visibility
-            if (!spec.padding) {
-              spec.padding = {
-                left: 20,
-                top: 20,
-                right: 20,
-                bottom: 20
-              };
-            }
-            
-            var opts = {
-              actions: {
-                export: false,
-                editor: false,
-                source: false,
-                compiled: false
-              },
-              hover: true,
-              defaultStyle: true
-              ${widget.constrainHeight ? ',downloadFileName: "chart.svg"' : ''}
-            };
-            vegaEmbed('#vega-container-$_viewId', spec, opts).catch(console.error);
-          } catch (e) {
-            console.error('Vega-Lite error:', e);
-            document.body.innerHTML = '<div style="color: red; padding: 10px; border: 1px solid red; background: #ffe0e0;">Vega Error: ' + e.message + '</div>';
-          }
-        } else {
-          console.error('vegaEmbed not loaded');
+  /// JavaScript source of a function that embeds the spec into the element it
+  /// is given and returns vega-embed's promise.
+  String _embedFunctionSource() {
+    return '''
+      (function(el) {
+        var spec = ${widget.vegaSpec};
+        
+        // Apply responsive defaults for container sizing
+        if (!spec.width) {
+          spec.width = "container";
         }
-      }, 100);
+        if (!spec.height) {
+          spec.height = ${widget.maxHeight != null ? widget.maxHeight : '"container"'};
+        }
+        
+        // Ensure autosize is set for responsive behavior
+        if (!spec.autosize) {
+          spec.autosize = {
+            type: "fit",
+            resize: true,
+            contains: "padding"
+          };
+        }
+        
+        // Ensure proper padding for legends and axes visibility
+        if (!spec.padding) {
+          spec.padding = {
+            left: 20,
+            top: 20,
+            right: 20,
+            bottom: 20
+          };
+        }
+        
+        var opts = {
+          actions: {
+            export: false,
+            editor: false,
+            source: false,
+            compiled: false
+          },
+          hover: true,
+          defaultStyle: true
+          ${widget.constrainHeight ? ',downloadFileName: "chart.svg"' : ''}
+        };
+        return vegaEmbed(el, spec, opts).catch(function(e) {
+          console.error('Vega-Lite error:', e);
+          throw e;
+        });
+      })
     ''';
-    
-    web.window.callMethod('eval'.toJS, scriptCode.toJS);
   }
 
   Future<void> _ensureVegaLoaded() async {

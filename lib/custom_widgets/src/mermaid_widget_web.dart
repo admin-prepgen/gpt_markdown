@@ -10,6 +10,8 @@ import 'package:webview_flutter/webview_flutter.dart';
 import 'dart:ui_web' as ui_web;
 import 'package:web/web.dart' as web;
 
+import 'render_when_attached.dart';
+
 /// A widget that renders Mermaid diagrams using WebView
 class MermaidWidget extends StatefulWidget {
   const MermaidWidget({
@@ -54,6 +56,12 @@ class _MermaidWidgetState extends State<MermaidWidget> {
   // Flutter platform view (which is unreliable) or clipping the bottom.
   web.HTMLDivElement? _containerEl;
   double? _contentHeight;
+  RenderWhenAttached? _renderer;
+
+  // Unique per widget: a millisecond timestamp alone collides when several
+  // diagrams are built in the same frame, and the second factory registration
+  // is then ignored.
+  static int _nextViewSerial = 0;
 
   @override
   void initState() {
@@ -92,30 +100,67 @@ class _MermaidWidgetState extends State<MermaidWidget> {
     }
   }
 
+  @override
+  void dispose() {
+    _renderer?.cancel();
+    super.dispose();
+  }
+
   void _updateWebElement() {
     if (!kIsWeb || _viewId == null) return;
     
-    // Find the existing container and update its CSS
-    final container = web.document.querySelector('#$_viewId') as web.HTMLDivElement?;
+    final container = _containerEl;
     if (container != null) {
       // Update overflow style based on fitContainer
       container.style.overflow = widget.fitContainer ? 'hidden' : 'auto';
       
       // Re-render the diagram
-      _ensureMermaidLoaded().then((_) {
-        final html = _generateWebHtml();
-        container.innerHTML = html.toJS;
-        
-        // Re-initialize mermaid with new config
-        _initializeMermaidDiagram();
-      });
+      _scheduleRender(container);
     }
   }
 
-  void _initializeMermaidDiagram() {
-    final scriptCode = '''
-      setTimeout(function() {
-        if (typeof mermaid !== 'undefined') {
+  /// Renders into [container] once Flutter has attached it to the document.
+  /// Replaces any render still pending for this widget.
+  void _scheduleRender(web.HTMLDivElement container) {
+    _renderer?.cancel();
+    final renderer = _renderer =
+        RenderWhenAttached(container, () => _renderDiagram(container));
+    renderer.run().then((ok) {
+      if (!identical(_renderer, renderer) || !mounted) return;
+      // Measure the rendered diagram and size the widget to it (non-fit).
+      if (ok && !widget.fitContainer) _scheduleAutoHeight();
+      // Mermaid draws its own error graphic for bad syntax; only fill in a
+      // message when nothing was drawn (e.g. mermaid.js failed to load).
+      if (!ok && container.querySelector('svg') == null) {
+        container.innerText = 'Error rendering Mermaid diagram';
+      }
+    });
+  }
+
+  Future<void> _renderDiagram(web.HTMLDivElement container) async {
+    await _ensureMermaidLoaded();
+    if (kDebugMode) {
+      print('Mermaid loaded, generating HTML...');
+    }
+    // Fresh markup each attempt: mermaid skips nodes it already processed.
+    container.innerHTML = _generateWebHtml().toJS;
+    final node = container.querySelector('#mermaid-diagram-$_viewId')!;
+    // Pass the node itself, not a selector: a document lookup finds nothing
+    // while the element is not attached, and mermaid.run() without nodes would
+    // render every pending diagram on the page instead.
+    final run = web.window.callMethod<JSFunction>(
+      'eval'.toJS,
+      _renderFunctionSource().toJS,
+    );
+    final result = run.callAsFunction(null, node) as JSPromise<JSAny?>;
+    await result.toDart;
+  }
+
+  /// JavaScript source of a function that renders the diagram in the node it
+  /// is given and returns mermaid's promise.
+  String _renderFunctionSource() {
+    return '''
+      (function(node) {
           mermaid.initialize({
             startOnLoad: false,
             theme: '${widget.theme}',
@@ -157,17 +202,14 @@ class _MermaidWidgetState extends State<MermaidWidget> {
               ${widget.fitContainer ? 'useMaxHeight: true' : ''}
             }
           });
-          try {
-            // Render ONLY this view's diagram (scope to its id) so concurrent
-            // diagrams don't interfere with each other.
-            var node = document.querySelector('#mermaid-diagram-$_viewId');
-            var runOpts = node ? { nodes: [node] } : undefined;
-            mermaid.run(runOpts).then(function() {
+          // Render ONLY this view's diagram so concurrent diagrams don't
+          // interfere with each other.
+          return mermaid.run({ nodes: [node] }).then(function() {
               // Safari-safe sizing: cap the SVG to the container but do NOT force
               // width/height:auto or object-fit — on WebKit that collapses an
               // inline SVG inside a flexbox to zero size (the "renders then whites
               // out" bug). Keep mermaid's own width:100% + viewBox aspect ratio.
-              var svg = document.querySelector('#mermaid-diagram-$_viewId svg');
+              var svg = node.querySelector('svg');
               if (svg) {
                 svg.style.removeProperty('object-fit');
                 // Only fit-mode caps the SVG to the container. In non-fit mode we
@@ -179,21 +221,16 @@ class _MermaidWidgetState extends State<MermaidWidget> {
               }
             }).catch(function(error) {
               console.error('Mermaid render error:', error);
+              throw error;
             });
-          } catch (e) {
-            console.error('Mermaid error:', e);
-          }
-        }
-      }, 100);
+      })
     ''';
-    
-    web.window.callMethod('eval'.toJS, scriptCode.toJS);
   }
 
   void _registerWebView() {
     if (!kIsWeb) return;
     
-    _viewId = 'mermaid-${DateTime.now().millisecondsSinceEpoch}';
+    _viewId = 'mermaid-${DateTime.now().millisecondsSinceEpoch}-${_nextViewSerial++}';
     
     if (kDebugMode) {
       print('Registering Mermaid view with ID: $_viewId');
@@ -230,30 +267,8 @@ class _MermaidWidgetState extends State<MermaidWidget> {
       print('Mermaid code preview: ${widget.mermaidCode.substring(0, widget.mermaidCode.length > 50 ? 50 : widget.mermaidCode.length)}...');
     }
     
-    // Load Mermaid.js and render the diagram
-    _ensureMermaidLoaded().then((_) {
-      if (kDebugMode) {
-        print('Mermaid loaded, generating HTML...');
-      }
-      final html = _generateWebHtml();
-      container.innerHTML = html.toJS;
-      
-      if (kDebugMode) {
-        print('HTML set, executing JavaScript...');
-      }
-      
-      // Run initialization script
-      _initializeMermaidDiagram();
-      // Measure the rendered diagram and size the widget to it (non-fit).
-      if (!widget.fitContainer) {
-        _scheduleAutoHeight();
-      }
-    }).catchError((error) {
-      if (kDebugMode) {
-        print('Error loading Mermaid: $error');
-      }
-      container.innerText = 'Error loading Mermaid: $error';
-    });
+    // Load Mermaid.js and render the diagram once the element is in the page
+    _scheduleRender(container);
 
     return container;
   }
